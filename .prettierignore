@@ -1,0 +1,8 @@
+dist
+node_modules
+src-tauri
+package-lock.json
+.claude
+.future-scope
+# Xcode-generated icon asset catalog (minified JSON — not our source)
+public/Assets.xcassets

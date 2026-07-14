@@ -1,0 +1,160 @@
+@import 'tailwindcss';
+@import './theme.css';
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background-color: var(--color-canvas);
+    color: var(--color-fg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Native-app feel: UI chrome isn't selectable, no web click-flash,
+       no rubber-band bounce / scroll-chaining. */
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+
+  /* Re-enable selection only where reading/copying matters (logs, terminal, inputs). */
+  input,
+  textarea,
+  [contenteditable='true'],
+  .selectable {
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: auto;
+  }
+
+  /* Visible focus ring everywhere (a11y). */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+/* Hide scrollbars app-wide; scrolling still works.
+   Unlayered so it beats layered/portaled modal styles. */
+*,
+*::before,
+*::after {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+*::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+  width: 0;
+  height: 0;
+}
+
+/* Native-feel enter/exit for Radix popovers + dialogs (unlayered so they win).
+   Driven by Radix data-state; exit plays because Radix delays unmount for it. */
+@keyframes nx-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes nx-pop-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes nx-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes nx-dialog-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+@keyframes nx-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes nx-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.nx-pop {
+  transform-origin: var(--radix-popper-transform-origin, center);
+}
+.nx-pop[data-state='open'] {
+  animation: nx-pop-in 150ms var(--ease-standard);
+}
+.nx-pop[data-state='closed'] {
+  animation: nx-pop-out 120ms var(--ease-standard);
+}
+.nx-dialog {
+  transform-origin: center top;
+}
+.nx-dialog[data-state='open'] {
+  animation: nx-dialog-in 120ms var(--ease-standard);
+}
+.nx-dialog[data-state='closed'] {
+  animation: nx-dialog-out 90ms var(--ease-standard);
+}
+.nx-fade[data-state='open'] {
+  animation: nx-fade-in 110ms var(--ease-standard);
+}
+.nx-fade[data-state='closed'] {
+  animation: nx-fade-out 90ms var(--ease-standard);
+}
+
+/* Instant theme switch (native feel) — suppress transitions for the flip frame
+   so tokens don't slowly cross-fade. Hover transitions keep working. */
+:root.theme-switching *,
+:root.theme-switching *::before,
+:root.theme-switching *::after {
+  transition: none !important;
+}
+
+/* Every animation needs a reduced-motion path. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

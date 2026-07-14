@@ -1,0 +1,1 @@
+export { UninstallDialog } from './UninstallDialog';

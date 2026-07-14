@@ -1,0 +1,80 @@
+// Nexus Console — Tauri core.
+
+mod brew;
+mod commands;
+mod context;
+mod error;
+mod pty;
+mod quit;
+mod session;
+mod tray;
+mod util;
+
+use tauri::Manager;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        // single-instance MUST be registered first (focuses the existing window
+        // instead of launching a second copy).
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.set_focus();
+            }
+        }))
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_window_state::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
+        .setup(|app| {
+            app.manage(context::discover());
+            app.manage(brew::BrewLock::default());
+            app.manage(pty::PtyManager::default());
+            app.manage(session::SessionServices::default());
+            tray::build_tray(app.handle())?;
+            Ok(())
+        })
+        // X closes to the tray — services keep running. Real quit is Cmd+Q / tray Quit.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
+        .invoke_handler(tauri::generate_handler![
+            commands::context::get_app_context,
+            commands::services::list_services,
+            commands::services::start_service,
+            commands::services::stop_service,
+            commands::services::restart_service,
+            commands::services::set_link_intent,
+            commands::services::install_formula,
+            commands::services::search_formulae,
+            commands::services::formula_versions,
+            commands::services::uninstall_formula,
+            commands::ports::list_ports,
+            commands::ports::kill_process,
+            commands::packages::list_packages,
+            commands::packages::packages_outdated,
+            commands::packages::package_dependents,
+            commands::packages::upgrade_package,
+            commands::packages::upgrade_all,
+            commands::packages::package_info,
+            commands::packages::update_homebrew,
+            pty::pty_open,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_kill,
+            tray::set_tray_title,
+            tray::set_tray_services
+        ])
+        .build(tauri::generate_context!())
+        .expect("error while building Nexus Console")
+        .run(|app, event| {
+            // On real quit: kill PTYs + stop explicitly-unlinked running services.
+            if let tauri::RunEvent::ExitRequested { .. } = event {
+                app.state::<pty::PtyManager>().kill_all();
+                quit::stop_session_services(app);
+            }
+        });
+}

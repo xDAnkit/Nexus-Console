@@ -1,0 +1,27 @@
+[package]
+name = "nexus-console"
+version = "0.1.0"
+description = "Nexus Console — a lightweight GUI for local Homebrew services"
+authors = ["AvinyX"]
+edition = "2021"
+
+[lib]
+name = "nexus_console_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["image-png", "tray-icon"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-single-instance = "2"
+tauri-plugin-store = "2"
+tauri-plugin-window-state = "2"
+thiserror = "2"
+portable-pty = "0.9.0"
+libc = "0.2.186"
+tauri-plugin-notification = "2.3.3"
+
+# ponytail: notification plugin + nix land in P5/P7 as needed — not pre-added.

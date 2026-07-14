@@ -1,0 +1,1 @@
+export { KillConfirmDialog } from './KillConfirmDialog';

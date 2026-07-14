@@ -1,0 +1,25 @@
+# Fast on commit, slow on push. Keeps the loop tight (ponytail).
+pre-commit:
+  parallel: true
+  commands:
+    oxlint:
+      glob: 'src/**/*.{ts,tsx}'
+      run: npx oxlint {staged_files}
+    prettier:
+      glob: '*.{ts,tsx,css,json,md,yml}'
+      run: npx prettier --check {staged_files}
+    rustfmt:
+      glob: 'src-tauri/**/*.rs'
+      run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+
+pre-push:
+  parallel: true
+  commands:
+    typecheck:
+      run: npm run typecheck
+    test:
+      run: npm run test
+    clippy:
+      run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+    cargo-test:
+      run: cargo test --manifest-path src-tauri/Cargo.toml
