@@ -3,7 +3,10 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/shared/state/hooks';
 import { removeManaged } from '@/shared/state/serviceIntentSlice';
 import { Button } from '@/shared/ui/Button';
-import { ConnectServiceModal, iconFor } from '@/features/services';
+// Deep imports — the services barrel re-exports ServicesPage and would chain it
+// into this chunk (defeats the per-tab lazy split).
+import { ConnectServiceModal } from '@/features/services/components/ConnectServiceModal';
+import { iconFor } from '@/features/services/components/ServiceCard';
 
 export const ManagedServicesEditor = () => {
   const managed = useAppSelector((s) => s.serviceIntent.managed);

@@ -3,6 +3,7 @@ export { CMD } from './commands';
 export { IpcError, type IpcErrorKind } from './ipc-error';
 export { useIpcEvent } from './events';
 export { bindFocusManager } from './focus';
+export { showMainWindow } from './window';
 export { openPty, writePty, resizePty, killPty, type PtyEvent, type PtyOpenParams } from './pty';
 export { notifyCrash, setTrayTitle, setTrayServices } from './notify';
 export { useAppContext, appContextQueryKey } from './context';

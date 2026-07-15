@@ -10,6 +10,9 @@ export const AppShell = ({ children, footer }: PropsWithChildren<AppShellProps>)
   <div className="flex h-screen w-screen overflow-hidden bg-canvas text-fg">
     <Sidebar />
     <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+      {/* Overlay titlebar means the window draws no native drag region of its
+          own — this thin strip is what makes the main column draggable. */}
+      <div data-tauri-drag-region className="h-7 w-full shrink-0" />
       <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
       {footer}
     </main>

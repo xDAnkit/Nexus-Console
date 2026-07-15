@@ -4,7 +4,9 @@ import { useAppDispatch, useAppSelector } from '@/shared/state/hooks';
 import { clearAllSessions } from '@/shared/state/sessionsSlice';
 import { setCardOrder } from '@/shared/state/settingsSlice';
 import { useReconciledServices } from '@/shared/brew';
-import { applyCardOrder } from '@/features/services';
+// Deep import — the services barrel re-exports ServicesPage and would chain it
+// into this chunk (defeats the per-tab lazy split).
+import { applyCardOrder } from '@/features/services/pages/ServicesPage/cardOrder';
 import { useDragReorder } from '@/shared/lib/useDragReorder';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/Button';

@@ -3,17 +3,21 @@ import { Plus, Check } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/shared/state/hooks';
 import { addManaged } from '@/shared/state/serviceIntentSlice';
 import { formulaDisplayName } from '@/shared/lib/format';
+import { useDebouncedValue } from '@/shared/lib/useDebouncedValue';
 import { useSearchFormulae } from '@/shared/brew';
 import { Dialog } from '@/shared/ui/Dialog';
 import { Spinner } from '@/shared/ui/Spinner';
 import { POPULAR_FORMULAE } from './ConnectServiceModal.config';
 import type { ConnectServiceModalProps } from './ConnectServiceModal.types';
 
+const SEARCH_DEBOUNCE_MS = 250;
+
 export const ConnectServiceModal = ({ open, onOpenChange }: ConnectServiceModalProps) => {
   const dispatch = useAppDispatch();
   const managed = useAppSelector((s) => s.serviceIntent.managed);
   const [query, setQuery] = useState('');
-  const search = useSearchFormulae(query);
+  const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS);
+  const search = useSearchFormulae(debouncedQuery);
 
   const isAdded = (formula: string) => managed.some((m) => m.formula === formula);
   const add = (formula: string) =>

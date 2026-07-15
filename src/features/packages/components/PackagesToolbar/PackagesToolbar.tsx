@@ -31,6 +31,7 @@ export const PackagesToolbar = ({
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder="Search packages…"
         aria-label="Search packages"
+        data-nx-page-search
         className="h-9 w-full rounded-md border border-border bg-paper pr-3 pl-8 text-sm text-fg placeholder:text-fg-subtle sm:w-56"
       />
     </div>

@@ -7,7 +7,17 @@ import { useResolvedTheme } from '@/shared/state/useResolvedTheme';
 import { xtermTheme } from '@/features/terminal/utils/xtermTheme';
 import type { TerminalSession } from '@/shared/state/terminalsSlice';
 
-export const XtermView = ({ session, active }: { session: TerminalSession; active: boolean }) => {
+export const XtermView = ({
+  session,
+  active,
+  visible = true,
+}: {
+  session: TerminalSession;
+  active: boolean;
+  /** Drawer visibility — fit() no-ops on a display:none container, so a refit
+   * must run when the drawer reshows. */
+  visible?: boolean;
+}) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -55,19 +65,38 @@ export const XtermView = ({ session, active }: { session: TerminalSession; activ
   }, [session.id, session.formula, session.kind]);
 
   // Fit + tell the PTY the new size whenever this terminal is shown or resized.
+  // rAF-coalesced (live window drags fire many resize events per frame) and the
+  // IPC is skipped when cols/rows didn't actually change.
   useEffect(() => {
-    if (!active) return;
+    if (!active || !visible) return;
     const fit = fitRef.current;
     const term = termRef.current;
     if (!fit || !term) return;
-    const onResize = () => {
+    let prevCols = 0;
+    let prevRows = 0;
+    let raf = 0;
+    const doFit = () => {
       fit.fit();
-      void resizePty(session.id, term.cols, term.rows);
+      if (term.cols !== prevCols || term.rows !== prevRows) {
+        prevCols = term.cols;
+        prevRows = term.rows;
+        void resizePty(session.id, term.cols, term.rows);
+      }
     };
-    onResize();
+    const onResize = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        doFit();
+      });
+    };
+    doFit();
     window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [active, session.id]);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [active, visible, session.id]);
 
   // Re-theme on light/dark switch.
   useEffect(() => {

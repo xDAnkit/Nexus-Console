@@ -6,8 +6,10 @@
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 @theme {
-  --font-sans:
-    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* macOS-only app (see src-tauri/tauri.conf.json bundle targets) — lead with
+     the system font (San Francisco) for native feel instead of a web font that
+     was declared but never actually bundled/loaded. */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   /* Surfaces / ink (light = default) */
   --color-canvas: #f8fafc;

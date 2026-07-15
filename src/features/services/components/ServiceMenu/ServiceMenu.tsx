@@ -6,7 +6,9 @@ import { useAppDispatch } from '@/shared/state/hooks';
 import { removeManaged } from '@/shared/state/serviceIntentSlice';
 import { markUserStop } from '@/shared/lib/userStops';
 import { Spinner } from '@/shared/ui/Spinner';
-import { UninstallDialog } from '@/features/packages';
+// Deep import — the packages barrel re-exports PackagesPage and would chain the
+// whole packages chunk into the default services tab.
+import { UninstallDialog } from '@/features/packages/components/UninstallDialog';
 import type { ReconciledService } from '@/shared/brew';
 
 const itemCls =

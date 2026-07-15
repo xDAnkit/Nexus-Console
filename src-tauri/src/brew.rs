@@ -8,9 +8,18 @@ pub struct BrewLock(pub Mutex<()>);
 
 /// Run brew with args as an array (never a shell string). Returns stdout, or the
 /// trimmed stderr as a shell error.
+///
+/// `HOMEBREW_NO_AUTO_UPDATE` suppresses brew's automatic `brew update` check that
+/// otherwise runs before install/upgrade — without it, a Finder-launched app (no
+/// shell rc, so the env var isn't inherited) can silently trigger a multi-minute
+/// update on an ordinary install/start click. `update_homebrew`'s own explicit
+/// `brew update` is unaffected — the var only suppresses the *automatic* pre-run
+/// check, not a direct `update` invocation.
 pub fn run_brew(brew_bin: &str, args: &[&str]) -> AppResult<String> {
     let out = Command::new(brew_bin)
         .args(args)
+        .env("HOMEBREW_NO_AUTO_UPDATE", "1")
+        .env("HOMEBREW_NO_ANALYTICS", "1")
         .output()
         .map_err(|e| AppError::Shell(format!("brew failed: {e}")))?;
     if out.status.success() {

@@ -5,8 +5,15 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { Toaster } from 'sonner';
 import { store } from '@/app/store';
 import { queryClient } from '@/app/queryClient';
+import { useResolvedTheme } from '@/shared/state/useResolvedTheme';
 import { ThemeProvider } from './ThemeProvider';
 import { RootErrorBoundary } from './RootErrorBoundary';
+
+// Sonner defaults to a light theme and doesn't read the app's data-theme —
+// without this, toasts render light-on-dark.
+const ThemedToaster = () => (
+  <Toaster position="bottom-right" closeButton richColors theme={useResolvedTheme()} />
+);
 
 export const AppProviders = ({ children }: PropsWithChildren) => (
   <ReduxProvider store={store}>
@@ -14,7 +21,7 @@ export const AppProviders = ({ children }: PropsWithChildren) => (
       <ThemeProvider>
         <Tooltip.Provider delayDuration={200}>
           <RootErrorBoundary>{children}</RootErrorBoundary>
-          <Toaster position="bottom-right" closeButton richColors />
+          <ThemedToaster />
         </Tooltip.Provider>
       </ThemeProvider>
     </QueryClientProvider>

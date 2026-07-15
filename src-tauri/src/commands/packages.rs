@@ -3,7 +3,7 @@ use crate::context::AppContext;
 use crate::error::{AppError, AppResult};
 use crate::util::validate;
 use std::collections::HashMap;
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -82,8 +82,16 @@ pub struct OutdatedDto {
 pub async fn list_packages(ctx: State<'_, AppContext>) -> AppResult<Vec<PackageDto>> {
     let brew = brew_bin(&ctx)?.to_string();
     tauri::async_runtime::spawn_blocking(move || {
+        // The two `brew list` calls are independent — run them on separate
+        // threads instead of serially (roughly halves this command's wall time).
+        let brew2 = brew.clone();
+        let casks_handle =
+            std::thread::spawn(move || run_brew(&brew2, &["list", "--cask", "--versions"]));
         let formulae = run_brew(&brew, &["list", "--formula", "--versions"]).unwrap_or_default();
-        let casks = run_brew(&brew, &["list", "--cask", "--versions"]).unwrap_or_default();
+        let casks = casks_handle
+            .join()
+            .unwrap_or(Ok(String::new()))
+            .unwrap_or_default();
 
         let mut out = Vec::new();
         for (text, kind) in [(&formulae, "formula"), (&casks, "cask")] {
@@ -154,45 +162,63 @@ pub async fn package_dependents(
     .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
 }
 
-// async so the long `brew upgrade`/`update` subprocess runs off the main thread
-// (a sync command blocks it → frozen UI). Same reason as the service commands.
+// async + spawn_blocking so the long `brew upgrade`/`update` subprocess (and the
+// BrewLock hold) never runs on a tokio runtime thread — an async fn that blocks
+// in its own body still freezes the UI. State is reached via AppHandle since it
+// must be moved into the 'static spawn_blocking closure. Same pattern as the
+// service write commands in commands/services.rs.
 #[tauri::command]
 pub async fn upgrade_package(
     name: String,
     ctx: State<'_, AppContext>,
-    lock: State<'_, BrewLock>,
+    app: AppHandle,
 ) -> AppResult<()> {
-    let _g = lock
-        .0
-        .lock()
-        .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
     validate::validate_formula(&name)?;
-    run_brew(brew_bin(&ctx)?, &["upgrade", &name])?;
-    Ok(())
+    let bin = brew_bin(&ctx)?.to_string();
+    tauri::async_runtime::spawn_blocking(move || {
+        let lock = app.state::<BrewLock>();
+        let _g = lock
+            .0
+            .lock()
+            .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
+        run_brew(&bin, &["upgrade", &name])?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
 }
 
 #[tauri::command]
-pub async fn upgrade_all(ctx: State<'_, AppContext>, lock: State<'_, BrewLock>) -> AppResult<()> {
-    let _g = lock
-        .0
-        .lock()
-        .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
-    run_brew(brew_bin(&ctx)?, &["upgrade"])?;
-    Ok(())
+pub async fn upgrade_all(ctx: State<'_, AppContext>, app: AppHandle) -> AppResult<()> {
+    let bin = brew_bin(&ctx)?.to_string();
+    tauri::async_runtime::spawn_blocking(move || {
+        let lock = app.state::<BrewLock>();
+        let _g = lock
+            .0
+            .lock()
+            .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
+        run_brew(&bin, &["upgrade"])?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
 }
 
 /// `brew update` — refresh formula definitions (does not upgrade packages).
 #[tauri::command]
-pub async fn update_homebrew(
-    ctx: State<'_, AppContext>,
-    lock: State<'_, BrewLock>,
-) -> AppResult<()> {
-    let _g = lock
-        .0
-        .lock()
-        .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
-    run_brew(brew_bin(&ctx)?, &["update"])?;
-    Ok(())
+pub async fn update_homebrew(ctx: State<'_, AppContext>, app: AppHandle) -> AppResult<()> {
+    let bin = brew_bin(&ctx)?.to_string();
+    tauri::async_runtime::spawn_blocking(move || {
+        let lock = app.state::<BrewLock>();
+        let _g = lock
+            .0
+            .lock()
+            .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
+        run_brew(&bin, &["update"])?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
 }
 
 #[tauri::command]

@@ -15,7 +15,11 @@ export const Sidebar = () => {
 
   return (
     <aside className="flex w-60 shrink-0 flex-col gap-6 border-r border-border bg-paper p-4">
-      <div className="flex items-center gap-3 px-2 pt-2">
+      {/* pt-8 clears the inset traffic lights (overlay titlebar); drag-region
+          "deep" makes the logo/title draggable too — interactive children still
+          work normally, only this element's own background + non-interactive
+          children become drag handles. */}
+      <div data-tauri-drag-region="deep" className="flex items-center gap-3 px-2 pt-8">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-soft text-accent">
           <Boxes className="h-5 w-5" />
         </div>

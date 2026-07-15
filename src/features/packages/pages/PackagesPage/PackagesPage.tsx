@@ -36,6 +36,8 @@ export const PackagesPage = () => {
     });
   }, [data, outdated]);
 
+  const upgradingName = upgrade.isPending ? upgrade.variables?.name : undefined;
+
   const outdatedCount = useMemo(
     () => packages.filter((p) => p.outdated && !p.pinned).length,
     [packages],
@@ -88,6 +90,7 @@ export const PackagesPage = () => {
               onSelect={setSelected}
               onUninstall={setUninstallTarget}
               onUpgrade={(name) => upgrade.mutate({ name })}
+              upgradingName={upgradingName}
             />
           )}
         </div>

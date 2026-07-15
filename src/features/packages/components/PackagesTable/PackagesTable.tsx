@@ -12,6 +12,9 @@ interface Props {
   onSelect: (name: string) => void;
   onUninstall: (name: string) => void;
   onUpgrade: (name: string) => void;
+  /** Name of the package currently being upgraded, if any — disables and
+   * relabels that row's button so a long-running upgrade doesn't look dead. */
+  upgradingName?: string;
 }
 
 export const PackagesTable = ({
@@ -20,6 +23,7 @@ export const PackagesTable = ({
   onSelect,
   onUninstall,
   onUpgrade,
+  upgradingName,
 }: Props) => {
   const columns = useMemo<
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,8 +76,13 @@ export const PackagesTable = ({
           return (
             <div className="flex items-center justify-end gap-1">
               {p.outdated && !p.pinned && (
-                <Button variant="secondary" size="sm" onClick={() => onUpgrade(p.name)}>
-                  Upgrade
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={upgradingName === p.name}
+                  onClick={() => onUpgrade(p.name)}
+                >
+                  {upgradingName === p.name ? 'Upgrading…' : 'Upgrade'}
                 </Button>
               )}
               <PackageActions
@@ -87,7 +96,7 @@ export const PackagesTable = ({
         },
       },
     ],
-    [serviceNames, onSelect, onUninstall, onUpgrade],
+    [serviceNames, onSelect, onUninstall, onUpgrade, upgradingName],
   );
 
   return (

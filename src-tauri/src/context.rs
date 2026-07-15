@@ -13,6 +13,12 @@ pub struct AppContext {
     pub brew_version: Option<String>,
 }
 
+/// `brew --version` result, resolved off the startup path — the subprocess costs
+/// 100-500ms and would otherwise block first paint (setup() runs before the event
+/// loop). Filled by a spawn_blocking task in setup; `None` until it lands.
+#[derive(Default)]
+pub struct BrewVersion(pub std::sync::RwLock<Option<String>>);
+
 /// Arch-first brew prefix probe: Apple Silicon → /opt/homebrew, Intel → /usr/local.
 /// Honors HOMEBREW_PREFIX as a fallback. Never hardcode the prefix downstream.
 pub fn discover() -> AppContext {
@@ -45,26 +51,28 @@ pub fn discover() -> AppContext {
         }
     }
 
-    let brew_version = brew_bin.as_ref().and_then(|bin| {
-        let out = Command::new(bin).arg("--version").output().ok()?;
-        if !out.status.success() {
-            return None;
-        }
-        // "Homebrew 6.0.10" → "6.0.10"
-        String::from_utf8_lossy(&out.stdout)
-            .lines()
-            .next()
-            .map(|l| l.trim().trim_start_matches("Homebrew").trim().to_string())
-            .filter(|v| !v.is_empty())
-    });
-
     AppContext {
         platform,
         arch,
         brew_prefix,
         brew_bin,
-        brew_version,
+        // Resolved async after startup (see BrewVersion) — never block paint on it.
+        brew_version: None,
     }
+}
+
+/// Blocking `brew --version` probe — call from spawn_blocking, never from setup().
+pub fn resolve_brew_version(bin: &str) -> Option<String> {
+    let out = Command::new(bin).arg("--version").output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    // "Homebrew 6.0.10" → "6.0.10"
+    String::from_utf8_lossy(&out.stdout)
+        .lines()
+        .next()
+        .map(|l| l.trim().trim_start_matches("Homebrew").trim().to_string())
+        .filter(|v| !v.is_empty())
 }
 
 #[cfg(test)]
@@ -94,8 +102,13 @@ mod tests {
         let ctx = discover();
         assert_eq!(ctx.platform, "macos");
         assert!(ctx.brew_prefix.is_some(), "brew prefix should be found");
-        assert!(ctx.brew_version.is_some(), "brew --version should parse");
-        println!("discovered: {ctx:?}");
+        assert!(
+            ctx.brew_version.is_none(),
+            "version is resolved async, not in discover()"
+        );
+        let v = resolve_brew_version(ctx.brew_bin.as_deref().unwrap());
+        assert!(v.is_some(), "brew --version should parse");
+        println!("discovered: {ctx:?} version: {v:?}");
     }
 
     #[test]
