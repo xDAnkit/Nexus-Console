@@ -10,6 +10,7 @@
     "core:window:allow-set-theme",
     "core:window:allow-start-dragging",
     "store:default",
-    "notification:default"
+    "notification:default",
+    "dialog:default"
   ]
 }

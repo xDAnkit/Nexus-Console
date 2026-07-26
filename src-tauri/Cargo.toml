@@ -23,5 +23,11 @@ thiserror = "2"
 portable-pty = "0.9.0"
 libc = "0.2.186"
 tauri-plugin-notification = "2.3.3"
+# bundled: compiles its own sqlite3 — read-only probes + VACUUM on VSCode's
+# state.vscdb must not depend on a system libsqlite version.
+rusqlite = { version = "0.32", features = ["bundled"] }
+# Native NSAlert confirms for destructive ops — the gate lives in Rust, so the
+# frontend can't bypass it.
+tauri-plugin-dialog = "2"
 
 # ponytail: notification plugin + nix land in P5/P7 as needed — not pre-added.

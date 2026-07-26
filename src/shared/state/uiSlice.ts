@@ -1,6 +1,14 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-export const TABS = ['services', 'packages', 'ports', 'sessions', 'settings'] as const;
+export const TABS = [
+  'services',
+  'doctor',
+  'archiver',
+  'packages',
+  'ports',
+  'sessions',
+  'settings',
+] as const;
 export type Tab = (typeof TABS)[number];
 
 interface UiState {

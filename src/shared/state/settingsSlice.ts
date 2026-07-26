@@ -11,6 +11,10 @@ interface SettingsState {
   quitBehavior: QuitBehavior;
   /** User drag-reorder of service cards, by formula. Unknown/new formulas sort last. */
   cardOrder: string[];
+  /** Tray automation (read by the Rust scheduler from the same store file). */
+  autoArchiveEnabled: boolean;
+  autoArchiveCutoffDays: number;
+  autoVacuumEnabled: boolean;
   /** false until persisted settings are loaded from tauri-store on boot. */
   hydrated: boolean;
 }
@@ -18,7 +22,14 @@ interface SettingsState {
 /** The subset written to disk (never persist `hydrated`). */
 export type PersistedSettings = Pick<
   SettingsState,
-  'theme' | 'layout' | 'pollIntervalMs' | 'quitBehavior' | 'cardOrder'
+  | 'theme'
+  | 'layout'
+  | 'pollIntervalMs'
+  | 'quitBehavior'
+  | 'cardOrder'
+  | 'autoArchiveEnabled'
+  | 'autoArchiveCutoffDays'
+  | 'autoVacuumEnabled'
 >;
 
 const initialState: SettingsState = {
@@ -27,6 +38,9 @@ const initialState: SettingsState = {
   pollIntervalMs: 4000,
   quitBehavior: 'stopUnlinked',
   cardOrder: [],
+  autoArchiveEnabled: false,
+  autoArchiveCutoffDays: 30,
+  autoVacuumEnabled: false,
   hydrated: false,
 };
 
@@ -49,6 +63,15 @@ const settingsSlice = createSlice({
     setCardOrder(state, action: PayloadAction<string[]>) {
       state.cardOrder = action.payload;
     },
+    setAutoArchiveEnabled(state, action: PayloadAction<boolean>) {
+      state.autoArchiveEnabled = action.payload;
+    },
+    setAutoArchiveCutoffDays(state, action: PayloadAction<number>) {
+      state.autoArchiveCutoffDays = action.payload;
+    },
+    setAutoVacuumEnabled(state, action: PayloadAction<boolean>) {
+      state.autoVacuumEnabled = action.payload;
+    },
     hydrateSettings(state, action: PayloadAction<Partial<PersistedSettings>>) {
       Object.assign(state, action.payload);
       state.hydrated = true;
@@ -62,6 +85,9 @@ export const {
   setPollInterval,
   setQuitBehavior,
   setCardOrder,
+  setAutoArchiveEnabled,
+  setAutoArchiveCutoffDays,
+  setAutoVacuumEnabled,
   hydrateSettings,
 } = settingsSlice.actions;
 export const settingsReducer = settingsSlice.reducer;

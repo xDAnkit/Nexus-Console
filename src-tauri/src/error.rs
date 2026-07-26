@@ -18,6 +18,10 @@ pub enum AppError {
     NotFound(String),
     #[error("{0}")]
     Io(String),
+    /// User dismissed a native confirm — never an actual failure; the
+    /// frontend suppresses its toast for this kind.
+    #[error("{0}")]
+    Cancelled(String),
 }
 
 impl AppError {
@@ -29,6 +33,7 @@ impl AppError {
             AppError::Forbidden(_) => "forbidden",
             AppError::NotFound(_) => "notFound",
             AppError::Io(_) => "io",
+            AppError::Cancelled(_) => "cancelled",
         }
     }
 }

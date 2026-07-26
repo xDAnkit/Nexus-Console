@@ -4,6 +4,7 @@ import type { ServiceStatus } from './StatusChip.types';
 export const STATUS_META: Record<ServiceStatus, { label: string }> = {
   running: { label: 'Running' },
   starting: { label: 'Starting' },
+  stopping: { label: 'Stopping' },
   stopped: { label: 'Stopped' },
   notInstalled: { label: 'Not installed' },
   error: { label: 'Error' },

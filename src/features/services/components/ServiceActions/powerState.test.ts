@@ -44,6 +44,16 @@ test('stop command running → Stop face with loader, disabled', () => {
   });
 });
 
+test('winding down (optimistic stopping) → Stop face with loader, still abortable', () => {
+  // Bulk or single stop flips the service to the transient `stopping` state;
+  // the card shows the spinner until brew confirms it stopped.
+  expect(powerState('stopping', false, false)).toEqual({
+    face: 'stop',
+    loading: true,
+    disabled: false,
+  });
+});
+
 test('the click→loader→Stop sequence never skips the loader', () => {
   // stopped → (click, brew running) → (coming up) → running
   const seq = [

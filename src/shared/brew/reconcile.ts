@@ -9,6 +9,8 @@ export function mapStatus(dto: ServiceDto | undefined): DisplayStatus {
   switch (dto.status) {
     case 'started':
       return dto.healthy === false ? 'starting' : 'running';
+    case 'stopping':
+      return 'stopping'; // synthetic: only ever set by the stop optimistic update
     case 'error':
       return 'error';
     default:

@@ -233,7 +233,15 @@ pub async fn start_service(
             .lock()
             .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
         let action = if linked { "start" } else { "run" };
-        run_brew(&bin, &["services", action, &name])?;
+        // A wedged launchd label (bootstrapped-but-not-running) makes `brew
+        // services start` fail with EIO 5 ("Bootstrap failed: 5"). brew's list
+        // still reports it "stopped", so the UI only ever shows Start and never
+        // a Stop to clear it — a deadlock. Bootout + retry once so Start
+        // self-heals. ponytail: retry only on the failure path (happy path stays fast).
+        if run_brew(&bin, &["services", action, &name]).is_err() {
+            let _ = run_brew(&bin, &["services", "stop", &name]);
+            run_brew(&bin, &["services", action, &name])?;
+        }
         record_intent(&app.state::<SessionServices>(), &name, linked);
         app.state::<ServicesCache>().invalidate();
         Ok(())

@@ -1,0 +1,4 @@
+# Sourced by lefthook before every hook (see `rc:` in lefthook.yml).
+# GUI git clients (VSCode, Fork, Tower) don't load your shell profile, so
+# cargo/brew aren't on their PATH — this makes hooks work everywhere.
+export PATH="$HOME/.cargo/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"

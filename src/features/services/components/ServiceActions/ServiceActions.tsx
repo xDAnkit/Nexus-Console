@@ -5,19 +5,14 @@ import { openTerminal } from '@/shared/state/terminalsSlice';
 import { markUserStop } from '@/shared/lib/userStops';
 import { Button } from '@/shared/ui/Button';
 import { Spinner } from '@/shared/ui/Spinner/Spinner';
-import {
-  useStartService,
-  useStopService,
-  useSetLinkIntent,
-  useInstallFormula,
-} from '@/shared/brew';
+import { useSetLinkIntent, useInstallFormula } from '@/shared/brew';
+import { useServiceControls } from '@/features/services/useServiceControls';
 import { powerState } from './powerState';
 import type { ServiceActionsProps } from './ServiceActions.types';
 
 export const ServiceActions = ({ service, compact = false }: ServiceActionsProps) => {
   const dispatch = useAppDispatch();
-  const start = useStartService();
-  const stop = useStopService();
+  const { startMut, stopMut, start, stop } = useServiceControls();
   const relink = useSetLinkIntent();
   const install = useInstallFormula();
 
@@ -26,7 +21,7 @@ export const ServiceActions = ({ service, compact = false }: ServiceActionsProps
   // Button state derives from the REAL service status (+ the in-flight mutation),
   // so the loader tracks the actual start/stop transition, not a guess. See
   // powerState.ts.
-  const power = powerState(service.status, start.isPending, stop.isPending);
+  const power = powerState(service.status, startMut.isPending, stopMut.isPending);
   // Other actions lock while any brew op runs or the service is mid-transition.
   const busy = power.loading || relink.isPending || install.isPending;
 
@@ -48,16 +43,10 @@ export const ServiceActions = ({ service, compact = false }: ServiceActionsProps
     }
   };
 
-  const handleStart = () => {
-    // Record explicit intent so quit-cleanup knows this is ours (and its mode).
-    dispatch(setIntent({ formula: service.formula, linkState: linked ? 'linked' : 'unlinked' }));
-    start.mutate({ name: service.formula, linked });
-  };
-
-  const handleStop = () => {
-    markUserStop(service.formula); // suppress the crash notification
-    stop.mutate({ name: service.formula });
-  };
+  // Intent + user-stop bookkeeping live in useServiceControls (shared with bulk).
+  // Errors surface via the global toast; catch just avoids an unhandled rejection.
+  const handleStart = () => void start(service).catch(() => {});
+  const handleStop = () => void stop(service).catch(() => {});
 
   const openCli = () =>
     dispatch(openTerminal({ formula: service.formula, title: service.displayName, kind: 'cli' }));
@@ -143,7 +132,10 @@ export const ServiceActions = ({ service, compact = false }: ServiceActionsProps
   }
 
   return (
-    <div className="flex flex-nowrap items-center gap-1.5">
+    // Equal-width buttons fill the footer in one clean row. No `min-w-0`/`truncate`,
+    // so flex-1 never shrinks a button below its label — no more "St…"/"Lo…".
+    // The grid's min card width (ServiceGrid) guarantees all four fit.
+    <div className="flex items-center gap-1.5">
       {actions.map(({ key, label, Icon, onClick, variant, disabled, loading }) => (
         <Button
           key={key}
@@ -151,14 +143,14 @@ export const ServiceActions = ({ service, compact = false }: ServiceActionsProps
           size="sm"
           disabled={disabled}
           onClick={onClick}
-          className="min-w-0 flex-1 px-2 text-xs sm:text-sm"
+          className="flex-1 gap-1.5 px-2"
         >
           {loading ? (
             <Spinner className="h-3.5 w-3.5 shrink-0 text-current" />
           ) : (
             <Icon className="h-3.5 w-3.5 shrink-0" />
           )}
-          <span className="truncate">{label}</span>
+          {label}
         </Button>
       ))}
     </div>

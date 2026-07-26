@@ -32,7 +32,7 @@ export const ServiceGrid = ({ services, onReorder }: ServiceGridProps) => {
   };
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-4">
       {services.map((s, i) => (
         <div
           key={s.formula}

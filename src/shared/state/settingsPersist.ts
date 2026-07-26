@@ -7,6 +7,9 @@ import {
   setPollInterval,
   setQuitBehavior,
   setCardOrder,
+  setAutoArchiveEnabled,
+  setAutoArchiveCutoffDays,
+  setAutoVacuumEnabled,
   type PersistedSettings,
 } from './settingsSlice';
 
@@ -30,12 +33,38 @@ export async function loadPersistedSettings(): Promise<Partial<PersistedSettings
 // ponytail: no debounce — settings toggles are infrequent; add one if it churns.
 export const settingsListener = createListenerMiddleware();
 settingsListener.startListening({
-  matcher: isAnyOf(setTheme, setLayout, setPollInterval, setQuitBehavior, setCardOrder),
+  matcher: isAnyOf(
+    setTheme,
+    setLayout,
+    setPollInterval,
+    setQuitBehavior,
+    setCardOrder,
+    setAutoArchiveEnabled,
+    setAutoArchiveCutoffDays,
+    setAutoVacuumEnabled,
+  ),
   effect: async (_action, api) => {
-    const { theme, layout, pollIntervalMs, quitBehavior, cardOrder } = (api.getState() as RootState)
-      .settings;
+    const {
+      theme,
+      layout,
+      pollIntervalMs,
+      quitBehavior,
+      cardOrder,
+      autoArchiveEnabled,
+      autoArchiveCutoffDays,
+      autoVacuumEnabled,
+    } = (api.getState() as RootState).settings;
     const store = await getStore();
-    await store.set(KEY, { theme, layout, pollIntervalMs, quitBehavior, cardOrder });
+    await store.set(KEY, {
+      theme,
+      layout,
+      pollIntervalMs,
+      quitBehavior,
+      cardOrder,
+      autoArchiveEnabled,
+      autoArchiveCutoffDays,
+      autoVacuumEnabled,
+    });
     await store.save();
   },
 });

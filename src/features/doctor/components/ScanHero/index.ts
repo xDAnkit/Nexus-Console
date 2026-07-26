@@ -1,0 +1,1 @@
+export { ScanHero } from './ScanHero';

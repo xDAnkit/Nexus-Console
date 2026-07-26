@@ -3,6 +3,7 @@
 mod brew;
 mod commands;
 mod context;
+mod doctor;
 mod error;
 mod pty;
 mod quit;
@@ -37,6 +38,7 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let ctx = context::discover();
             let brew_bin = ctx.brew_bin.clone();
@@ -47,6 +49,9 @@ pub fn run() {
             app.manage(pty::PtyManager::default());
             app.manage(session::SessionServices::default());
             tray::build_tray(app.handle())?;
+            // Doctor tray automation (opt-in via Archiver settings): daily
+            // auto-archive + VACUUM-when-VSCode-closes. Daemon thread, 5-min tick.
+            doctor::scheduler::start(app.handle().clone());
             // brew --version costs 100-500ms — resolve it off the startup path so
             // it never blocks first paint. Consumers render "v—" until it lands.
             if let Some(bin) = brew_bin {
@@ -67,7 +72,27 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            commands::confirm_bulk,
             commands::context::get_app_context,
+            commands::doctor::doctor_scan,
+            commands::doctor::doctor_deep_scan,
+            commands::doctor::doctor_cancel_deep_scan,
+            commands::doctor::doctor_fix,
+            commands::doctor::doctor_journal,
+            commands::doctor::doctor_export,
+            commands::archiver::claude_installed,
+            commands::archiver::claude_projects,
+            commands::archiver::claude_sessions,
+            commands::archiver::claude_archive,
+            commands::archiver::claude_archive_files,
+            commands::archiver::claude_archived,
+            commands::archiver::claude_restore,
+            commands::archiver::claude_delete,
+            commands::archiver::claude_delete_live,
+            commands::archiver::claude_settings,
+            commands::archiver::claude_set_retention,
+            commands::vscode::vscode_cleanup_orphans,
+            commands::vscode::vscode_vacuum,
             commands::services::list_services,
             commands::services::start_service,
             commands::services::stop_service,

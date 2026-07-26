@@ -29,6 +29,7 @@ export function powerState(
   if (startPending) return { face: 'start', loading: true, disabled: true }; // launching
   if (stopPending) return { face: 'stop', loading: true, disabled: true }; // stopping
   if (status === 'starting') return { face: 'stop', loading: true, disabled: false }; // coming up
+  if (status === 'stopping') return { face: 'stop', loading: true, disabled: false }; // winding down
   if (status === 'running') return { face: 'stop', loading: false, disabled: false };
   return { face: 'start', loading: false, disabled: false }; // stopped / error / anything else
 }

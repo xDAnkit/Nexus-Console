@@ -28,6 +28,19 @@ export function formatPercent(cpu: number | null): string {
   return `${cpu.toFixed(1)}%`;
 }
 
+/** Human relative time: "just now" · "5h ago" · "yesterday" · "12 days ago"
+ * · "3 weeks ago" · "4 months ago". Pair with an absolute `title` tooltip. */
+export function formatRelative(ms: number, nowMs: number = Date.now()): string {
+  const secs = Math.max(0, Math.floor((nowMs - ms) / 1000));
+  const days = Math.floor(secs / 86_400);
+  if (secs < 3_600) return 'just now';
+  if (days === 0) return `${Math.floor(secs / 3_600)}h ago`;
+  if (days === 1) return 'yesterday';
+  if (days < 14) return `${days} days ago`;
+  if (days < 61) return `${Math.floor(days / 7)} weeks ago`;
+  return `${Math.floor(days / 30)} months ago`;
+}
+
 /** Timestamp → "Jul 14 at 08:05 AM". */
 export function formatTime(ms: number): string {
   return new Date(ms).toLocaleString('en-US', {

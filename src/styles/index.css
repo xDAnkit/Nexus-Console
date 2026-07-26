@@ -160,6 +160,22 @@
   animation: nx-fade-out 90ms var(--ease-standard);
 }
 
+/* Fade + settle for content that swaps in on mount (e.g. the doctor deep-scan
+   loader replacing the report) — no abrupt pop. */
+@keyframes nx-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.nx-enter {
+  animation: nx-enter var(--duration-slow) var(--ease-decelerate);
+}
+
 /* Launch splash logo: gentle settle-in. Reduced-motion path via the global override. */
 @keyframes nx-splash-in {
   from {
@@ -173,6 +189,21 @@
 }
 .nx-splash-logo {
   animation: nx-splash-in var(--duration-slow) var(--ease-decelerate);
+}
+
+/* macOS-style determinate progress: a sheen sweeps the filled bar so it reads
+   as "working" even while the value holds on a slow probe (never looks frozen).
+   Global reduced-motion override stills it. */
+@keyframes nx-progress-sheen {
+  0% {
+    transform: translateX(-150%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+.nx-progress-sheen {
+  animation: nx-progress-sheen 1.5s ease-in-out infinite;
 }
 
 /* Instant theme switch (native feel) — suppress transitions for the flip frame

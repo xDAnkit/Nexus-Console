@@ -1,14 +1,19 @@
 import { Boxes } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useAppDispatch, useAppSelector } from '@/shared/state/hooks';
 import { setActiveTab } from '@/shared/state/uiSlice';
 import { useReconciledServices } from '@/shared/brew';
 import { cn } from '@/shared/lib/cn';
 import { NAV_ITEMS } from './Sidebar.config';
+import { useClaudeInstalled } from './useClaudeInstalled';
 
 export const Sidebar = () => {
   const activeTab = useAppSelector((s) => s.ui.activeTab);
   const dispatch = useAppDispatch();
   const { services } = useReconciledServices();
+  const claudeInstalled = useClaudeInstalled();
+  const reduce = useReducedMotion();
+  const navItems = NAV_ITEMS.filter((i) => i.tab !== 'archiver' || claudeInstalled);
 
   const running = services.filter((s) => s.status === 'running' || s.status === 'starting').length;
   const badge = services.length > 0 ? `${running}/${services.length}` : null;
@@ -30,7 +35,7 @@ export const Sidebar = () => {
       </div>
 
       <nav className="flex flex-col gap-1">
-        {NAV_ITEMS.map(({ tab, label, icon: Icon }) => {
+        {navItems.map(({ tab, label, icon: Icon }) => {
           const isActive = tab === activeTab;
           return (
             <button
@@ -39,16 +44,25 @@ export const Sidebar = () => {
               onClick={() => dispatch(setActiveTab(tab))}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-accent-soft text-accent'
-                  : 'text-fg-muted hover:bg-list hover:text-fg',
+                'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                isActive ? 'text-accent' : 'text-fg-muted hover:bg-list hover:text-fg',
               )}
             >
-              <Icon className="h-4 w-4" />
-              <span className="flex-1 text-left">{label}</span>
+              {/* Shared-layout pill glides between items on selection. */}
+              {isActive && (
+                <motion.span
+                  aria-hidden
+                  layoutId="sidebar-active"
+                  className="absolute inset-0 rounded-lg bg-accent-soft"
+                  transition={
+                    reduce ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 40 }
+                  }
+                />
+              )}
+              <Icon className="relative z-10 h-4 w-4" />
+              <span className="relative z-10 flex-1 text-left">{label}</span>
               {tab === 'services' && badge && (
-                <span className="rounded-full bg-running-soft px-2 py-0.5 text-xs font-medium text-running tabular-nums">
+                <span className="relative z-10 rounded-full bg-running-soft px-2 py-0.5 text-xs font-medium text-running tabular-nums">
                   {badge}
                 </span>
               )}

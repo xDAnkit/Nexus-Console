@@ -1,7 +1,15 @@
 import type { ZodError } from 'zod';
 
 export type IpcErrorKind =
-  'shell' | 'parse' | 'invalidName' | 'forbidden' | 'notFound' | 'io' | 'contract' | 'unknown';
+  | 'shell'
+  | 'parse'
+  | 'invalidName'
+  | 'forbidden'
+  | 'notFound'
+  | 'io'
+  | 'cancelled'
+  | 'contract'
+  | 'unknown';
 
 /** Normalizes both Rust `AppError` ({kind,message,detail}) and zod contract
  * failures into one shape the UI (and the query onError toast) can rely on. */

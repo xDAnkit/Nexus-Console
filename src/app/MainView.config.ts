@@ -8,5 +8,7 @@ export const PAGES: Record<Tab, ComponentType> = {
   packages: lazy(() => import('@/features/packages').then((m) => ({ default: m.PackagesPage }))),
   ports: lazy(() => import('@/features/ports').then((m) => ({ default: m.PortsPage }))),
   sessions: lazy(() => import('@/features/sessions').then((m) => ({ default: m.SessionsPage }))),
+  doctor: lazy(() => import('@/features/doctor').then((m) => ({ default: m.DoctorPage }))),
+  archiver: lazy(() => import('@/features/archiver').then((m) => ({ default: m.ArchiverPage }))),
   settings: lazy(() => import('@/features/settings').then((m) => ({ default: m.SettingsPage }))),
 };

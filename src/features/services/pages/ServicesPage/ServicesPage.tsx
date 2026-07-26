@@ -1,10 +1,18 @@
 import { useMemo, useState } from 'react';
-import { CircleCheck, LayoutGrid, Plus } from 'lucide-react';
+import { LayoutGrid, Play, Plus, Square } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAppDispatch, useAppSelector } from '@/shared/state/hooks';
 import { setCardOrder } from '@/shared/state/settingsSlice';
 import { applyCardOrder, mergeVisibleOrder } from './cardOrder';
-import { useReconciledServices } from '@/shared/brew';
-import { useAppContext } from '@/shared/tauri';
+import {
+  useBulkPower,
+  isRunning,
+  isStartable,
+  summarizeBulk,
+  type BulkResult,
+} from './useBulkPower';
+import { useReconciledServices, type ReconciledService } from '@/shared/brew';
+import { useAppContext, confirmBulk } from '@/shared/tauri';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
 import { ServiceGrid } from '@/features/services/components/ServiceGrid';
@@ -12,14 +20,25 @@ import { ServiceList } from '@/features/services/components/ServiceList';
 import { ServicesToolbar } from '@/features/services/components/ServicesToolbar';
 import { ConnectServiceModal } from '@/features/services/components/ConnectServiceModal';
 
+const MAX_NAMES = 8;
+// A readable subset for the confirm message — never dump 40 names into an alert.
+const nameList = (svcs: ReconciledService[]) => {
+  const names = svcs.map((s) => s.displayName);
+  return names.length <= MAX_NAMES
+    ? names.join(', ')
+    : `${names.slice(0, MAX_NAMES).join(', ')} +${names.length - MAX_NAMES} more`;
+};
+
 export const ServicesPage = () => {
   const { services, isPending, isError, error, isFetching, refetch } = useReconciledServices();
   const layout = useAppSelector((s) => s.settings.layout);
   const cardOrder = useAppSelector((s) => s.settings.cardOrder);
   const dispatch = useAppDispatch();
   const { data: ctx } = useAppContext();
+  const bulk = useBulkPower();
   const [query, setQuery] = useState('');
   const [connectOpen, setConnectOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const ordered = useMemo(() => applyCardOrder(services, cardOrder), [services, cardOrder]);
 
@@ -31,8 +50,39 @@ export const ServicesPage = () => {
     );
   }, [ordered, query]);
 
+  const runningServices = useMemo(() => services.filter(isRunning), [services]);
+  const startableServices = useMemo(() => services.filter(isStartable), [services]);
+  // "Start all" only when nothing is running (everything's off); otherwise
+  // "Stop all" is the relevant global action.
+  const allStopped = runningServices.length === 0 && startableServices.length > 0;
+
   const handleReorder = (visible: string[]) =>
     dispatch(setCardOrder(mergeVisibleOrder(ordered, visible)));
+
+  const runBulk = async (verb: string, action: () => Promise<BulkResult>) => {
+    setBusy(true);
+    try {
+      const res = await action();
+      const msg = summarizeBulk(verb, res);
+      if (res.failed > 0) toast.error(msg);
+      else toast.success(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Start is safe + reversible → no confirm. Stop all confirms natively, naming
+  // the count + services affected.
+  const onStartAll = () => runBulk('Started', () => bulk.startMany(startableServices));
+
+  const onStopAll = async () => {
+    const confirmed = await confirmBulk({
+      title: 'Stop all services',
+      message: `Stop all ${runningServices.length} running service${runningServices.length === 1 ? '' : 's'}?\n${nameList(runningServices)}`,
+      action: 'Stop all',
+    });
+    if (confirmed) await runBulk('Stopped', () => bulk.stopMany(runningServices));
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -51,22 +101,47 @@ export const ServicesPage = () => {
 
       <ConnectServiceModal open={connectOpen} onOpenChange={setConnectOpen} />
 
-      <div className="min-h-0 flex-1 overflow-auto p-6">
-        {ctx?.brewVersion && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-paper px-4 py-2.5 text-sm">
-            <CircleCheck className="h-4 w-4 text-running" />
-            <span className="text-fg-muted">
-              Homebrew ready · <span className="text-fg">v{ctx.brewVersion}</span>
-            </span>
-            <Button size="sm" className="ml-auto" onClick={() => setConnectOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add
+      {/* Persistent action toolbar (service ke andar wala header) — the global
+          Start all / Stop all action + Add, always visible above the grid.
+          Per-service control lives on each card's own buttons. */}
+      {ctx?.brewVersion && (
+        <div className="flex items-center justify-end gap-2 border-b border-border bg-paper px-6 py-2.5 text-sm">
+          {runningServices.length > 0 ? (
+            <Button
+              size="sm"
+              variant="dangerOutline"
+              disabled={busy}
+              onClick={() => void onStopAll()}
+            >
+              <Square className="h-4 w-4" />
+              Stop all
             </Button>
-          </div>
-        )}
+          ) : (
+            allStopped && (
+              <Button
+                size="sm"
+                variant="primaryOutline"
+                disabled={busy}
+                onClick={() => void onStartAll()}
+              >
+                <Play className="h-4 w-4" />
+                Start all
+              </Button>
+            )
+          )}
+          {(runningServices.length > 0 || allStopped) && (
+            <div aria-hidden className="h-6 w-px bg-border" />
+          )}
+          <Button size="sm" onClick={() => setConnectOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add
+          </Button>
+        </div>
+      )}
 
+      <div className="min-h-0 flex-1 overflow-auto p-6">
         {isPending ? (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-4">
             {[0, 1, 2].map((i) => (
               <div
                 key={i}

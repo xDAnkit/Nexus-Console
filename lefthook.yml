@@ -1,4 +1,7 @@
 # Fast on commit, slow on push. Keeps the loop tight (ponytail).
+# rc puts cargo/brew on PATH for GUI git clients (VSCode etc.).
+rc: .lefthookrc
+
 pre-commit:
   parallel: true
   commands:

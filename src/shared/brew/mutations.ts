@@ -7,15 +7,23 @@ import type { ServiceDto } from './schemas';
 
 type OptimisticPatch = Partial<Pick<ServiceDto, 'status' | 'healthy'>>;
 
+/** Opt out of the global error toast (bulk ops report one aggregated toast
+ * instead of N per-item toasts). Read by `queryClient`'s MutationCache. */
+interface MutationOpts {
+  silent?: boolean;
+}
+
 /** Shared optimistic-update machinery: flip the service's status instantly,
  * roll back on error, reconcile with reality on settle. Errors auto-toast via
- * the global MutationCache. */
+ * the global MutationCache unless `silent`. */
 function useServiceMutation<V extends { name: string }>(
   mutationFn: (vars: V) => Promise<void>,
   optimistic?: OptimisticPatch,
+  opts?: MutationOpts,
 ) {
   const qc = useQueryClient();
   return useMutation({
+    meta: opts?.silent ? { silent: true } : undefined,
     mutationFn,
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: brewKeys.services() });
@@ -37,21 +45,26 @@ function useServiceMutation<V extends { name: string }>(
 // Start → 'started' + healthy:false so reconcile maps to 'starting' (the loader
 // state), NOT straight to 'running'. The next poll's real health (a bound
 // listening port) flips it to 'running' and ends the loader.
-export function useStartService() {
+export function useStartService(opts?: MutationOpts) {
   return useServiceMutation<{ name: string; linked: boolean }>(
     (v) => ipcVoid(CMD.START_SERVICE, v),
     {
       status: 'started',
       healthy: false,
     },
+    opts,
   );
 }
 
-export function useStopService() {
-  return useServiceMutation<{ name: string }>((v) => ipcVoid(CMD.STOP_SERVICE, v), {
-    status: 'stopped',
-    healthy: null,
-  });
+// Optimistic `stopping` (a synthetic transitional status, see reconcile.ts) so
+// the card shows a "Stopping…" loader instead of flipping instantly to stopped
+// — the same feel single and bulk stop now share. Real polling resolves it.
+export function useStopService(opts?: MutationOpts) {
+  return useServiceMutation<{ name: string }>(
+    (v) => ipcVoid(CMD.STOP_SERVICE, v),
+    { status: 'stopping', healthy: null },
+    opts,
+  );
 }
 
 export function useRestartService() {
