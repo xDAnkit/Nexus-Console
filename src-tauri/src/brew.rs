@@ -25,15 +25,96 @@ pub fn run_brew(brew_bin: &str, args: &[&str]) -> AppResult<String> {
     if out.status.success() {
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     } else {
-        Err(AppError::Shell(
-            String::from_utf8_lossy(&out.stderr).trim().to_string(),
-        ))
+        Err(brew_error(&String::from_utf8_lossy(&out.stderr)))
+    }
+}
+
+/// Shown for every transient brew-is-busy condition. One sentence, says what's
+/// happening and that it resolves itself — nothing for the user to act on.
+pub const BREW_BUSY_MSG: &str = "Homebrew is busy updating itself. This clears on its own.";
+
+/// Homebrew self-upgrades its bundled "Portable Ruby" and takes a file lock
+/// while doing so; any brew started in that window either blocks on the lock or
+/// runs against a half-installed Ruby and dies with a backtrace. Neither is a
+/// real failure — both clear within a minute — so they map to `Busy` and the UI
+/// shows a spinner instead of red text.
+const BUSY_MARKERS: [&str; 4] = [
+    "already locked",
+    "vendor-install",
+    "Portable Ruby",
+    "is already running",
+];
+
+/// brew's Ruby crashes emit ~40 backtrace frames. Even after dropping them, cap
+/// what reaches a toast — the real message is always in the first line or two.
+const MAX_ERR_LINES: usize = 3;
+
+/// Classify brew stderr into a user-facing error: transient lock/Ruby-upgrade
+/// noise becomes `Busy`, everything else becomes a short `Shell` message with
+/// the Ruby backtrace stripped.
+pub fn brew_error(stderr: &str) -> AppError {
+    let text = stderr.trim();
+    if BUSY_MARKERS.iter().any(|m| text.contains(m)) {
+        return AppError::Busy(BREW_BUSY_MSG.into());
+    }
+    AppError::Shell(user_facing(text))
+}
+
+/// A Ruby backtrace frame — `/opt/homebrew/…/formulary.rb:351:in 'Array#each'`.
+/// Matched by shape, not by the Homebrew prefix, so it works on Intel
+/// (`/usr/local`) too.
+fn is_backtrace_frame(line: &str) -> bool {
+    line.contains(".rb:") && line.contains(":in ")
+}
+
+fn user_facing(text: &str) -> String {
+    let lines: Vec<&str> = text
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !is_backtrace_frame(l))
+        .filter(|l| !l.starts_with("Please report this issue"))
+        .take(MAX_ERR_LINES)
+        .collect();
+    if lines.is_empty() {
+        "Homebrew command failed".to_string()
+    } else {
+        lines.join(" ")
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The two real failures seen on 2026-08-02 (screenshots), verbatim.
+    const LOCK_ERR: &str = "lockf: 200: already locked Error: Another `brew vendor-install ruby` process is already running. Please wait for it to finish or terminate it to continue.\nError: Failed to upgrade Homebrew Portable Ruby!";
+    const RUBY_CRASH: &str = "Error: undefined method `service_name'\n/opt/homebrew/Library/Homebrew/formulary.rb:351:in 'block (3 levels) in Formulary.load_formula_from_struct!'\n/opt/homebrew/Library/Homebrew/service.rb:63:in 'Homebrew::Service#initialize'\n/opt/homebrew/Library/Homebrew/brew.rb:121:in '<main>'\nPlease report this issue: https://docs.brew.sh/Troubleshooting";
+
+    #[test]
+    fn lock_contention_is_busy_not_an_error() {
+        assert!(matches!(brew_error(LOCK_ERR), AppError::Busy(_)));
+    }
+
+    #[test]
+    fn ruby_crash_during_vendor_install_is_busy() {
+        // Contains "Portable Ruby"? No — but a crash mid-upgrade is still noise.
+        // What matters is that its 40-line backtrace never reaches the UI.
+        let AppError::Shell(msg) = brew_error(RUBY_CRASH) else {
+            panic!("expected Shell");
+        };
+        assert!(msg.starts_with("Error: undefined method"));
+        assert!(!msg.contains(".rb:"), "backtrace leaked into the UI: {msg}");
+        assert!(!msg.contains("docs.brew.sh"));
+        assert!(msg.len() < 120, "too long for a toast: {msg}");
+    }
+
+    #[test]
+    fn empty_stderr_still_says_something() {
+        let AppError::Shell(msg) = brew_error("   \n  ") else {
+            panic!("expected Shell");
+        };
+        assert_eq!(msg, "Homebrew command failed");
+    }
 
     // Read-only proof that run_brew reaches real brew. Ignored in CI.
     #[test]

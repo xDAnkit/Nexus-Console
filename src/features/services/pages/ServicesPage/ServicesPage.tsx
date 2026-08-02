@@ -15,6 +15,7 @@ import { useReconciledServices, type ReconciledService } from '@/shared/brew';
 import { useAppContext, confirmBulk } from '@/shared/tauri';
 import { Button } from '@/shared/ui/Button';
 import { EmptyState } from '@/shared/ui/EmptyState';
+import { ErrorPanel } from '@/shared/ui/ErrorPanel';
 import { ServiceGrid } from '@/features/services/components/ServiceGrid';
 import { ServiceList } from '@/features/services/components/ServiceList';
 import { ServicesToolbar } from '@/features/services/components/ServicesToolbar';
@@ -149,10 +150,15 @@ export const ServicesPage = () => {
               />
             ))}
           </div>
-        ) : isError ? (
-          <div className="rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
-            {error instanceof Error ? error.message : 'Failed to load services'}
-          </div>
+        ) : /* Only when there's nothing to show. A failed background poll on top
+               of a good list must not wipe the grid — the toast already reports
+               it, and the next tick usually recovers. */
+        isError && services.length === 0 ? (
+          <ErrorPanel
+            error={error}
+            fallback="Failed to load services"
+            onRetry={() => void refetch()}
+          />
         ) : filtered.length === 0 ? (
           <EmptyState
             icon={<LayoutGrid className="h-8 w-8" />}

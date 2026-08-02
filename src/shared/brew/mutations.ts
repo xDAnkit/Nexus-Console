@@ -15,15 +15,19 @@ interface MutationOpts {
 
 /** Shared optimistic-update machinery: flip the service's status instantly,
  * roll back on error, reconcile with reality on settle. Errors auto-toast via
- * the global MutationCache unless `silent`. */
+ * the global MutationCache unless `silent`.
+ *
+ * `label` is the verb the ActivityBar shows while this runs; it pairs with the
+ * mutation's own `name` variable there, so 'Starting' reads as "Starting redis". */
 function useServiceMutation<V extends { name: string }>(
+  label: string,
   mutationFn: (vars: V) => Promise<void>,
   optimistic?: OptimisticPatch,
   opts?: MutationOpts,
 ) {
   const qc = useQueryClient();
   return useMutation({
-    meta: opts?.silent ? { silent: true } : undefined,
+    meta: { label, ...(opts?.silent ? { silent: true } : {}) },
     mutationFn,
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: brewKeys.services() });
@@ -47,6 +51,7 @@ function useServiceMutation<V extends { name: string }>(
 // listening port) flips it to 'running' and ends the loader.
 export function useStartService(opts?: MutationOpts) {
   return useServiceMutation<{ name: string; linked: boolean }>(
+    'Starting',
     (v) => ipcVoid(CMD.START_SERVICE, v),
     {
       status: 'started',
@@ -61,6 +66,7 @@ export function useStartService(opts?: MutationOpts) {
 // — the same feel single and bulk stop now share. Real polling resolves it.
 export function useStopService(opts?: MutationOpts) {
   return useServiceMutation<{ name: string }>(
+    'Stopping',
     (v) => ipcVoid(CMD.STOP_SERVICE, v),
     { status: 'stopping', healthy: null },
     opts,
@@ -69,19 +75,20 @@ export function useStopService(opts?: MutationOpts) {
 
 export function useRestartService() {
   return useServiceMutation<{ name: string; linked: boolean }>(
+    'Restarting',
     (v) => ipcVoid(CMD.RESTART_SERVICE, v),
     { status: 'started', healthy: false },
   );
 }
 
 export function useSetLinkIntent() {
-  return useServiceMutation<{ name: string; linked: boolean }>((v) =>
+  return useServiceMutation<{ name: string; linked: boolean }>('Updating', (v) =>
     ipcVoid(CMD.SET_LINK_INTENT, v),
   );
 }
 
 export function useInstallFormula() {
-  return useServiceMutation<{ name: string }>((v) => ipcVoid(CMD.INSTALL_FORMULA, v));
+  return useServiceMutation<{ name: string }>('Installing', (v) => ipcVoid(CMD.INSTALL_FORMULA, v));
 }
 
 /** Uninstall a formula. Refreshes both services and packages. */
@@ -89,6 +96,7 @@ export function useUninstallFormula() {
   const qc = useQueryClient();
   const dispatch = useAppDispatch();
   return useMutation({
+    meta: { label: 'Removing' },
     mutationFn: ({ name, ignoreDependents }: { name: string; ignoreDependents: boolean }) =>
       ipcVoid(CMD.UNINSTALL_FORMULA, { name, ignoreDependents }),
     onSuccess: (_data, { name }) => dispatch(removeManaged(name)),

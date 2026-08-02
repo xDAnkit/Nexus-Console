@@ -8,6 +8,7 @@ export type IpcErrorKind =
   | 'notFound'
   | 'io'
   | 'cancelled'
+  | 'busy'
   | 'contract'
   | 'unknown';
 

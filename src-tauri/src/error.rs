@@ -22,6 +22,11 @@ pub enum AppError {
     /// frontend suppresses its toast for this kind.
     #[error("{0}")]
     Cancelled(String),
+    /// Homebrew is mid-operation (our own mutation, or brew upgrading its
+    /// bundled Ruby) and can't answer right now. Transient and self-clearing —
+    /// the frontend renders it as a calm "working…" state, never a red error.
+    #[error("{0}")]
+    Busy(String),
 }
 
 impl AppError {
@@ -34,6 +39,7 @@ impl AppError {
             AppError::NotFound(_) => "notFound",
             AppError::Io(_) => "io",
             AppError::Cancelled(_) => "cancelled",
+            AppError::Busy(_) => "busy",
         }
     }
 }

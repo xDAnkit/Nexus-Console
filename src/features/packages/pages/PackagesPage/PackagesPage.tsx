@@ -3,6 +3,7 @@ import { usePackages, usePackagesOutdated } from '@/features/packages/api/usePac
 import { useUpgradePackage, useUpgradeAll } from '@/features/packages/api/packageMutations';
 import { useServices } from '@/shared/brew';
 import { Spinner } from '@/shared/ui/Spinner';
+import { ErrorPanel } from '@/shared/ui/ErrorPanel';
 import {
   PackagesToolbar,
   type PackageFilter,
@@ -80,8 +81,12 @@ export const PackagesPage = () => {
               <Spinner />
             </div>
           ) : isError ? (
-            <div className="m-6 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
-              {error instanceof Error ? error.message : 'Failed to list packages'}
+            <div className="m-6">
+              <ErrorPanel
+                error={error}
+                fallback="Failed to list packages"
+                onRetry={() => void refetch()}
+              />
             </div>
           ) : (
             <PackagesTable

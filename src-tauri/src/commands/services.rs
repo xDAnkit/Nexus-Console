@@ -1,4 +1,4 @@
-use crate::brew::{run_brew, BrewLock};
+use crate::brew::{brew_error, run_brew, BrewLock, BREW_BUSY_MSG};
 use crate::context::AppContext;
 use crate::error::{AppError, AppResult};
 use crate::util::{launchctl, lsof, ps, validate};
@@ -76,7 +76,8 @@ pub async fn list_services(
         .clone();
     tauri::async_runtime::spawn_blocking(move || {
         let cache = app.state::<ServicesCache>();
-        collect_services(&cache, &brew_bin, with_stats)
+        let lock = app.state::<BrewLock>();
+        collect_services(&cache, &lock, &brew_bin, with_stats)
     })
     .await
     .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
@@ -85,11 +86,12 @@ pub async fn list_services(
 /// Testable core (no Tauri State) — see `discovers_local_services`.
 fn collect_services(
     cache: &ServicesCache,
+    lock: &BrewLock,
     brew_bin: &str,
     with_stats: bool,
 ) -> AppResult<Vec<ServiceDto>> {
     let pids = launchctl::parse_launchctl(&run_launchctl());
-    let entries = fetch_services_list(cache, brew_bin, &pids)?;
+    let entries = fetch_services_list(cache, lock, brew_bin, &pids)?;
 
     let (samples, listen_ports) = if with_stats && !pids.is_empty() {
         let ids: Vec<String> = pids.values().map(u32::to_string).collect();
@@ -129,10 +131,17 @@ fn collect_services(
     Ok(services)
 }
 
+/// Last known list at any age — the fallback when brew is busy and we refuse to
+/// start a competing process.
+fn last_known(cache: &ServicesCache) -> Option<Vec<BrewEntry>> {
+    cache.0.lock().ok()?.as_ref().map(|c| c.entries.clone())
+}
+
 /// Returns cached entries when the pid map is unchanged and the TTL hasn't
 /// expired; otherwise re-runs `brew services list --json` and refreshes the cache.
 fn fetch_services_list(
     cache: &ServicesCache,
+    lock: &BrewLock,
     brew_bin: &str,
     pids: &HashMap<String, u32>,
 ) -> AppResult<Vec<BrewEntry>> {
@@ -144,14 +153,35 @@ fn fetch_services_list(
         }
     }
 
+    // Every 4s this poll used to spawn `brew services list` regardless of what
+    // else was running — so an install/start, or brew upgrading its own Ruby,
+    // meant two brew processes fighting over brew's file lock ("lockf: already
+    // locked", or a Ruby backtrace from a half-installed vendor Ruby). Take the
+    // same BrewLock the mutations take, but `try_lock`: a `brew install` can run
+    // for minutes and blocking here would freeze the poll (and the sidebar
+    // badge) for all of it. Busy → serve the last known list, let the next tick
+    // get the truth.
+    let Ok(_guard) = lock.0.try_lock() else {
+        return last_known(cache).ok_or_else(|| AppError::Busy(BREW_BUSY_MSG.into()));
+    };
+
     let out = Command::new(brew_bin)
         .args(["services", "list", "--json"])
+        // Same env as `run_brew` — this command builds its own `Command` (it
+        // needs raw bytes for serde), so the vars don't come for free.
+        .env("HOMEBREW_NO_AUTO_UPDATE", "1")
+        .env("HOMEBREW_NO_ANALYTICS", "1")
         .output()
         .map_err(|e| AppError::Shell(format!("brew services list failed: {e}")))?;
     if !out.status.success() {
-        return Err(AppError::Shell(
-            String::from_utf8_lossy(&out.stderr).trim().to_string(),
-        ));
+        // Stale data beats an error banner when brew is just mid-self-upgrade.
+        let err = brew_error(&String::from_utf8_lossy(&out.stderr));
+        if matches!(err, AppError::Busy(_)) {
+            if let Some(entries) = last_known(cache) {
+                return Ok(entries);
+            }
+        }
+        return Err(err);
     }
     let entries: Vec<BrewEntry> = serde_json::from_slice(&out.stdout)
         .map_err(|e| AppError::Parse(format!("brew services json: {e}")))?;
@@ -461,6 +491,45 @@ mod tests {
     }
 
     #[test]
+    fn busy_brew_serves_stale_instead_of_racing() {
+        let cache = ServicesCache::default();
+        let stale = vec![BrewEntry {
+            name: "redis".into(),
+            status: "started".into(),
+            file: None,
+        }];
+        *cache.0.lock().unwrap() = Some(CachedList {
+            entries: stale.clone(),
+            pid_map: HashMap::new(),
+            // Older than the TTL, so the fresh-cache path can't be what answers.
+            fetched_at: Instant::now() - SERVICES_CACHE_TTL - Duration::from_secs(1),
+        });
+
+        let lock = BrewLock::default();
+        let held = lock.0.lock().unwrap(); // stand in for an in-flight mutation
+        let pids = HashMap::from([("redis".to_string(), 1)]);
+        // "/nonexistent" would fail loudly if the lock check didn't short-circuit.
+        let out = fetch_services_list(&cache, &lock, "/nonexistent/brew", &pids).unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].name, "redis");
+        drop(held);
+    }
+
+    #[test]
+    fn busy_brew_with_no_cache_reports_busy_not_failure() {
+        let cache = ServicesCache::default();
+        let lock = BrewLock::default();
+        let held = lock.0.lock().unwrap();
+        let err = fetch_services_list(&cache, &lock, "/nonexistent/brew", &HashMap::new())
+            .expect_err("no cache + busy brew must error");
+        assert!(
+            matches!(err, AppError::Busy(_)),
+            "must be Busy (calm UI), got {err:?}"
+        );
+        drop(held);
+    }
+
+    #[test]
     fn invalidate_clears_the_cache() {
         let cache = ServicesCache::default();
         *cache.0.lock().unwrap() = Some(CachedList {
@@ -478,7 +547,8 @@ mod tests {
     #[ignore]
     fn discovers_local_services() {
         let cache = ServicesCache::default();
-        let services = collect_services(&cache, "/opt/homebrew/bin/brew", true).unwrap();
+        let lock = BrewLock::default();
+        let services = collect_services(&cache, &lock, "/opt/homebrew/bin/brew", true).unwrap();
         let redis = services
             .iter()
             .find(|s| s.name == "redis")
