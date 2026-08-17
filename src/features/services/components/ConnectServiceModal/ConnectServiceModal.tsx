@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { Plus, Check } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/shared/state/hooks';
 import { addManaged } from '@/shared/state/serviceIntentSlice';
-import { formulaDisplayName } from '@/shared/lib/format';
+import { bareFormula, formulaDisplayName } from '@/shared/lib/format';
 import { useDebouncedValue } from '@/shared/lib/useDebouncedValue';
-import { useSearchFormulae } from '@/shared/brew';
+import { useSearchFormulae, useServices } from '@/shared/brew';
 import { Dialog } from '@/shared/ui/Dialog';
 import { Spinner } from '@/shared/ui/Spinner';
 import { POPULAR_FORMULAE } from './ConnectServiceModal.config';
@@ -18,12 +18,34 @@ export const ConnectServiceModal = ({ open, onOpenChange }: ConnectServiceModalP
   const [query, setQuery] = useState('');
   const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS);
   const search = useSearchFormulae(debouncedQuery);
+  // Everything brew already runs as a service on this Mac — so a service removed
+  // from the list (or installed outside Nexus) can always be added back without
+  // knowing its formula name.
+  const services = useServices();
 
-  const isAdded = (formula: string) => managed.some((m) => m.formula === formula);
+  // Same bare-name rule the slice dedupes on — otherwise Add looks like a no-op.
+  const isAdded = (formula: string) =>
+    managed.some((m) => bareFormula(m.formula) === bareFormula(formula));
   const add = (formula: string) =>
     dispatch(addManaged({ formula, displayName: formulaDisplayName(formula) }));
 
   const showResults = query.trim().length >= 2;
+  const installed = (services.data ?? []).map((s) => s.name).filter((n) => !isAdded(n));
+  const popular = POPULAR_FORMULAE.filter((f) => !installed.includes(f));
+
+  const chip = (formula: string) => (
+    <button
+      key={formula}
+      type="button"
+      disabled={isAdded(formula)}
+      onClick={() => add(formula)}
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-canvas px-2.5 py-1.5 font-mono text-sm text-fg hover:bg-list disabled:opacity-50"
+    >
+      {isAdded(formula) ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+      {formula}
+      {isAdded(formula) && <span className="text-xs text-fg-subtle">· added</span>}
+    </button>
+  );
 
   return (
     <Dialog
@@ -73,26 +95,16 @@ export const ConnectServiceModal = ({ open, onOpenChange }: ConnectServiceModalP
           )
         ) : (
           <>
+            {installed.length > 0 && (
+              <>
+                <p className="mb-2 text-xs font-medium text-fg-subtle uppercase">
+                  Installed on this Mac · not in your list
+                </p>
+                <div className="mb-4 flex flex-wrap gap-2">{installed.map(chip)}</div>
+              </>
+            )}
             <p className="mb-2 text-xs font-medium text-fg-subtle uppercase">Popular services</p>
-            <div className="flex flex-wrap gap-2">
-              {POPULAR_FORMULAE.map((formula) => (
-                <button
-                  key={formula}
-                  type="button"
-                  disabled={isAdded(formula)}
-                  onClick={() => add(formula)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-canvas px-2.5 py-1.5 font-mono text-sm text-fg hover:bg-list disabled:opacity-50"
-                >
-                  {isAdded(formula) ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <Plus className="h-3.5 w-3.5" />
-                  )}
-                  {formula}
-                  {isAdded(formula) && <span className="text-xs text-fg-subtle">· added</span>}
-                </button>
-              ))}
-            </div>
+            <div className="flex flex-wrap gap-2">{popular.map(chip)}</div>
           </>
         )}
       </div>

@@ -2,21 +2,17 @@ import { Boxes } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useAppDispatch, useAppSelector } from '@/shared/state/hooks';
 import { setActiveTab } from '@/shared/state/uiSlice';
-import { useReconciledServices } from '@/shared/brew';
+import { useModuleEnabled, useVisibleNav } from '@/shared/modules';
 import { cn } from '@/shared/lib/cn';
-import { NAV_ITEMS } from './Sidebar.config';
-import { useClaudeInstalled } from './useClaudeInstalled';
+import { ServicesBadge } from './ServicesBadge';
 
 export const Sidebar = () => {
   const activeTab = useAppSelector((s) => s.ui.activeTab);
   const dispatch = useAppDispatch();
-  const { services } = useReconciledServices();
-  const claudeInstalled = useClaudeInstalled();
   const reduce = useReducedMotion();
-  const navItems = NAV_ITEMS.filter((i) => i.tab !== 'archiver' || claudeInstalled);
-
-  const running = services.filter((s) => s.status === 'running' || s.status === 'starting').length;
-  const badge = services.length > 0 ? `${running}/${services.length}` : null;
+  // Nav comes from the module registry — the only definition of which tabs exist.
+  const navItems = useVisibleNav();
+  const homebrewOn = useModuleEnabled('homebrew');
 
   return (
     <aside className="flex w-60 shrink-0 flex-col gap-6 border-r border-border bg-paper p-4">
@@ -61,11 +57,7 @@ export const Sidebar = () => {
               )}
               <Icon className="relative z-10 h-4 w-4" />
               <span className="relative z-10 flex-1 text-left">{label}</span>
-              {tab === 'services' && badge && (
-                <span className="relative z-10 rounded-full bg-running-soft px-2 py-0.5 text-xs font-medium text-running tabular-nums">
-                  {badge}
-                </span>
-              )}
+              {tab === 'services' && homebrewOn && <ServicesBadge />}
             </button>
           );
         })}

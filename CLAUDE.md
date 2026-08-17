@@ -20,9 +20,10 @@ Package manager is **npm** (`package-lock.json` is the tracked lockfile; CI runs
 An untracked `pnpm-lock.yaml` exists locally — don't commit lockfile churn from mixing the two.
 
 ```bash
-npm run setup        # read-only fresh-Mac prerequisite check (Xcode CLT, brew, node ≥22.12, rustup)
-npm run tauri dev    # the app (spawns vite on :1420); npm run dev is browser-only, IPC calls fail
-npm run tauri build  # → src-tauri/target/release/bundle/  (first Rust build takes minutes)
+npm run setup        # fresh-Mac setup: checks Xcode CLT, brew, node ≥22.12, rustup — and installs
+                     # what's missing (asks first). `npm run setup:check` = report only, no installs.
+npm start            # the app (= tauri dev, vite on :1420); npm run dev is browser-only, IPC calls fail
+npm run release      # = tauri build → src-tauri/target/release/bundle/ (first Rust build takes minutes)
 
 npm run typecheck    # tsc --noEmit
 npm run lint         # oxlint src   (not eslint)

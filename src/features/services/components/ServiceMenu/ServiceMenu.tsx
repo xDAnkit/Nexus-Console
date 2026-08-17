@@ -3,8 +3,9 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { MoreVertical, RotateCw, Package, Check, Trash2, ListX } from 'lucide-react';
 import { useFormulaVersions, useRestartService, useInstallFormula } from '@/shared/brew';
 import { useAppDispatch } from '@/shared/state/hooks';
-import { removeManaged } from '@/shared/state/serviceIntentSlice';
+import { removeManaged, renameManaged } from '@/shared/state/serviceIntentSlice';
 import { markUserStop } from '@/shared/lib/userStops';
+import { bareFormula } from '@/shared/lib/format';
 import { Spinner } from '@/shared/ui/Spinner';
 // Deep import — the packages barrel re-exports PackagesPage and would chain the
 // whole packages chunk into the default services tab.
@@ -27,7 +28,7 @@ export const ServiceMenu = ({ service }: { service: ReconciledService }) => {
   const installed = service.status !== 'notInstalled';
   const isRunning = service.status === 'running' || service.status === 'starting';
   const linked = service.linkState === 'linked';
-  const base = service.formula.split('@')[0];
+  const base = bareFormula(service.formula).split('@')[0];
   const versions = useFormulaVersions(base, open || prime);
 
   const versionList = versions.data ?? (installed ? [service.formula] : []);
@@ -79,7 +80,16 @@ export const ServiceMenu = ({ service }: { service: ReconciledService }) => {
                     key={v}
                     disabled={current}
                     className={`${itemCls} text-fg`}
-                    onSelect={() => install.mutate({ name: v })}
+                    onSelect={() =>
+                      install.mutate(
+                        { name: v },
+                        // Follow the card to whatever actually got installed.
+                        {
+                          onSuccess: () =>
+                            dispatch(renameManaged({ from: service.formula, to: v })),
+                        },
+                      )
+                    }
                   >
                     <Package className="h-4 w-4 text-fg-muted" />
                     <span className="font-mono">{v}</span>
@@ -87,6 +97,15 @@ export const ServiceMenu = ({ service }: { service: ReconciledService }) => {
                   </DropdownMenu.Item>
                 );
               })
+            )}
+            {/* Homebrew only ships @version formulae where its maintainers made
+                them (redis@6.2, postgresql@18) — nginx and most others have
+                exactly one. Say that, instead of leaving a lone row that reads
+                like the list failed to load. */}
+            {versions.data?.length === 1 && (
+              <p className="px-2.5 pt-0.5 pb-1 text-xs text-fg-subtle">
+                Homebrew has no other version of this formula.
+              </p>
             )}
 
             <DropdownMenu.Separator className="my-1 h-px bg-border" />

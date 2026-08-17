@@ -45,3 +45,12 @@ test('reconcile: intent overrides the unlinked default', () => {
   expect(row.status).toBe('running');
   expect(row.linkState).toBe('linked');
 });
+
+test("reconcile: tap-qualified managed formula matches brew's bare name", () => {
+  const [row] = reconcile(
+    [{ formula: 'mongodb/brew/mongodb-community@7.0', displayName: 'Mongodb Community' }],
+    [dto({ name: 'mongodb-community@7.0', status: 'started', healthy: true })],
+    {},
+  );
+  expect(row.status).toBe('running');
+});

@@ -2,12 +2,17 @@
   "name": "nexus-console",
   "private": true,
   "version": "0.1.0",
+  "author": "xDAnkit <xDAnkitjain@gmail.com>",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22.12"
   },
   "scripts": {
     "setup": "sh scripts/setup.sh",
+    "setup:check": "sh scripts/setup.sh --check",
+    "start": "tauri dev",
+    "release": "tauri build",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",

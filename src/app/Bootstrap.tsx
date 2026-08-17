@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type PropsWithChildren } from 'react';
 import { useAppDispatch, useAppSelector } from '@/shared/state/hooks';
 import { hydrateSettings } from '@/shared/state/settingsSlice';
 import { hydrateServiceIntent } from '@/shared/state/serviceIntentSlice';
@@ -6,8 +6,17 @@ import { hydrateSessions } from '@/shared/state/sessionsSlice';
 import { loadPersistedSettings } from '@/shared/state/settingsPersist';
 import { loadPersistedServiceIntent } from '@/shared/state/serviceIntentPersist';
 import { loadPersistedSessions } from '@/shared/state/sessionsPersist';
+import { sanitizeModules } from '@/shared/modules';
 import { useAppContext, showMainWindow } from '@/shared/tauri';
 import { SplashScreen } from '@/shared/ui/SplashScreen';
+
+// Shown once in an install's lifetime — lazy so it never sits in the initial
+// chunk for everyone who has already chosen.
+const WelcomeScreen = lazy(() =>
+  import('./WelcomeScreen').then((m) => ({
+    default: m.WelcomeScreen,
+  })),
+);
 
 // Kicked at module eval so the store IPC/disk reads overlap JS parse + first
 // render instead of waiting for the first commit's effect.
@@ -33,13 +42,25 @@ export const Bootstrap = ({ children }: PropsWithChildren) => {
   const hydrated = useAppSelector((s) => s.settings.hydrated);
   const { isPending } = useAppContext();
   const ready = hydrated && !isPending;
+  // null = this install has never chosen its modules → first-run picker instead
+  // of the app (see sanitizeModules for how "never chosen" is told apart from
+  // "existing install, key not written yet").
+  const needsModuleChoice = useAppSelector((s) => s.settings.enabledModules) === null;
 
   const [phase, setPhase] = useState<Phase>('splash');
   const mountedAt = useRef(Date.now());
 
   useEffect(() => {
     void persisted.then(([settings, intent, sessions]) => {
-      dispatch(hydrateSettings(settings ?? {}));
+      dispatch(
+        hydrateSettings({
+          ...(settings ?? {}),
+          // Disk is a trust boundary: drop unknown module ids, and tell "never
+          // chosen" (null → first-run picker) apart from "existing install
+          // without the key yet" (→ everything on, no onboarding wall).
+          enabledModules: sanitizeModules(settings?.enabledModules, settings !== null),
+        }),
+      );
       dispatch(hydrateServiceIntent(intent ?? {}));
       dispatch(hydrateSessions(sessions ?? {}));
     });
@@ -63,7 +84,14 @@ export const Bootstrap = ({ children }: PropsWithChildren) => {
 
   return (
     <>
-      {ready && children}
+      {ready &&
+        (needsModuleChoice ? (
+          <Suspense fallback={null}>
+            <WelcomeScreen />
+          </Suspense>
+        ) : (
+          children
+        ))}
       {phase !== 'done' && <SplashScreen leaving={phase === 'leaving'} />}
     </>
   );

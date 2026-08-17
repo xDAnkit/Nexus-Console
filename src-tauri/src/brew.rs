@@ -49,15 +49,37 @@ const BUSY_MARKERS: [&str; 4] = [
 /// what reaches a toast — the real message is always in the first line or two.
 const MAX_ERR_LINES: usize = 3;
 
+/// Homebrew 6 refuses to load anything from a third-party tap until the user
+/// trusts it once — and it fails the WHOLE command, so one untrusted tap breaks
+/// `brew list`/`info`/`search` for every other formula too.
+const UNTRUSTED_MARKER: &str = "from untrusted tap ";
+
 /// Classify brew stderr into a user-facing error: transient lock/Ruby-upgrade
-/// noise becomes `Busy`, everything else becomes a short `Shell` message with
-/// the Ruby backtrace stripped.
+/// noise becomes `Busy`, an untrusted tap becomes `UntrustedTap` (the UI offers
+/// to trust it), everything else becomes a short `Shell` message with the Ruby
+/// backtrace stripped.
 pub fn brew_error(stderr: &str) -> AppError {
     let text = stderr.trim();
     if BUSY_MARKERS.iter().any(|m| text.contains(m)) {
         return AppError::Busy(BREW_BUSY_MSG.into());
     }
+    if let Some(tap) = untrusted_tap(text) {
+        return AppError::UntrustedTap(tap);
+    }
     AppError::Shell(user_facing(text))
+}
+
+/// The `user/repo` tap out of "Refusing to load formula x from untrusted tap
+/// user/repo." — validated here, since it ends up as a `brew trust` argument.
+fn untrusted_tap(stderr: &str) -> Option<String> {
+    let tap = stderr
+        .split(UNTRUSTED_MARKER)
+        .nth(1)?
+        .split_whitespace()
+        .next()?
+        .trim_end_matches('.');
+    crate::util::validate::validate_tap(tap).ok()?;
+    Some(tap.to_string())
 }
 
 /// A Ruby backtrace frame — `/opt/homebrew/…/formulary.rb:351:in 'Array#each'`.
@@ -106,6 +128,23 @@ mod tests {
         assert!(!msg.contains(".rb:"), "backtrace leaked into the UI: {msg}");
         assert!(!msg.contains("docs.brew.sh"));
         assert!(msg.len() < 120, "too long for a toast: {msg}");
+    }
+
+    // Homebrew 6.0.14, verbatim (2026-08-16).
+    const UNTRUSTED: &str = "Error: Refusing to load formula mongodb/brew/mongodb-community@7.0 from untrusted tap mongodb/brew.\nRun `brew trust --formula mongodb/brew/mongodb-community@7.0` or `brew trust mongodb/brew` to trust it.";
+
+    #[test]
+    fn untrusted_tap_becomes_its_own_kind_with_the_tap_name() {
+        let AppError::UntrustedTap(tap) = brew_error(UNTRUSTED) else {
+            panic!("expected UntrustedTap");
+        };
+        assert_eq!(tap, "mongodb/brew");
+        assert!(matches!(
+            brew_error("Error: No such keg"),
+            AppError::Shell(_)
+        ));
+        // A junk "tap" never reaches `brew trust`.
+        assert_eq!(untrusted_tap("from untrusted tap ../../etc."), None);
     }
 
     #[test]

@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { bareFormula } from '@/shared/lib/format';
 
 export type LinkState = 'linked' | 'unlinked';
 
@@ -38,8 +39,25 @@ const serviceIntentSlice = createSlice({
       }
     },
     addManaged(state, action: PayloadAction<ManagedService>) {
-      if (!state.managed.some((m) => m.formula === action.payload.formula)) {
+      // Bare-name compare: `user/repo/redis` and `redis` are the same service.
+      const bare = bareFormula(action.payload.formula);
+      if (!state.managed.some((m) => bareFormula(m.formula) === bare)) {
         state.managed.push(action.payload);
+      }
+    },
+    /** Point a managed entry at the formula that was actually installed — the
+     * card is added as `elasticsearch` but brew only ships
+     * `elastic/tap/elasticsearch-full`, and a version switch renames it too.
+     * Without this the card stays stuck on "Not installed". */
+    renameManaged(state, action: PayloadAction<{ from: string; to: string }>) {
+      const { from, to } = action.payload;
+      const entry = state.managed.find((m) => m.formula === from);
+      if (!entry || from === to) return;
+      entry.formula = to;
+      const intent = state.intent[from];
+      if (intent) {
+        state.intent[to] = intent;
+        delete state.intent[from];
       }
     },
     removeManaged(state, action: PayloadAction<string>) {
@@ -56,6 +74,12 @@ const serviceIntentSlice = createSlice({
   },
 });
 
-export const { seedManaged, addManaged, removeManaged, setIntent, hydrateServiceIntent } =
-  serviceIntentSlice.actions;
+export const {
+  seedManaged,
+  addManaged,
+  renameManaged,
+  removeManaged,
+  setIntent,
+  hydrateServiceIntent,
+} = serviceIntentSlice.actions;
 export const serviceIntentReducer = serviceIntentSlice.reducer;

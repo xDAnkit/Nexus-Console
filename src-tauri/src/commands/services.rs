@@ -356,12 +356,30 @@ pub async fn set_link_intent(
     .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
 }
 
+/// `name` when brew actually ships it, otherwise the closest thing it does ship
+/// (`elasticsearch` → `elastic/tap/elasticsearch-full`, `mongodb-community@7.0`
+/// → `mongodb/brew/mongodb-community@7.0`). Falls back to `name` when the search
+/// finds nothing, so the user sees brew's own error rather than ours.
+fn resolve_installable(brew_bin: &str, name: &str) -> AppResult<String> {
+    let base = validate::bare_formula(name.split('@').next().unwrap_or(name));
+    let candidates = pick_versions(&run_brew(brew_bin, &["search", base])?, base);
+    if candidates.iter().any(|c| c == name) {
+        return Ok(name.to_string());
+    }
+    Ok(candidates
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| name.to_string()))
+}
+
+/// Returns the formula that was actually installed — the card renames itself to
+/// it, since it isn't always the name that was asked for.
 #[tauri::command]
 pub async fn install_formula(
     name: String,
     ctx: State<'_, AppContext>,
     app: AppHandle,
-) -> AppResult<()> {
+) -> AppResult<String> {
     validate::validate_formula(&name)?;
     let bin = brew_bin(&ctx)?.to_string();
     tauri::async_runtime::spawn_blocking(move || {
@@ -370,9 +388,10 @@ pub async fn install_formula(
             .0
             .lock()
             .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
-        run_brew(&bin, &["install", &name])?;
+        let target = resolve_installable(&bin, &name)?;
+        run_brew(&bin, &["install", &target])?;
         app.state::<ServicesCache>().invalidate();
-        Ok(())
+        Ok(target)
     })
     .await
     .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
@@ -400,6 +419,35 @@ pub async fn search_formulae(query: String, ctx: State<'_, AppContext>) -> AppRe
     .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
 }
 
+/// `brew search <base>` output → the installable candidates for that service:
+/// the base itself and its `@version` variants, base first. Names stay exactly
+/// as brew printed them (tap-qualified where it is), since that's what
+/// `brew install` needs back.
+fn pick_versions(search_out: &str, base: &str) -> Vec<String> {
+    let prefix = format!("{base}@");
+    let pick = |keep: &dyn Fn(&str) -> bool| -> Vec<String> {
+        search_out
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !l.starts_with("==>") && keep(validate::bare_formula(l)))
+            .map(String::from)
+            .collect()
+    };
+    let mut versions = pick(&|bare| bare == base || bare.starts_with(&prefix));
+    if versions.is_empty() {
+        // Core dropped some formulae and only a renamed tap build remains
+        // (elasticsearch → elastic/tap/elasticsearch-full), so an exact match
+        // finds nothing and the menu dead-ends on "No versions found". Fall back
+        // to a prefix match on the bare name — a near-miss like `elasticvue`
+        // still doesn't qualify.
+        versions = pick(&|bare| bare.starts_with(base));
+    }
+    // Base first, then variants; stable otherwise.
+    versions.sort_by_key(|v| (validate::bare_formula(v) != base, v.clone()));
+    versions.dedup();
+    versions
+}
+
 /// Available versions of a formula: the base + its `@version` variants
 /// (e.g. redis → [redis, redis@8.2, redis@6.2]).
 #[tauri::command]
@@ -409,19 +457,12 @@ pub async fn formula_versions(name: String, ctx: State<'_, AppContext>) -> AppRe
     // main thread so opening the ⋯ menu never freezes the UI (the first-open lag).
     let brew = brew_bin(&ctx)?.to_string();
     tauri::async_runtime::spawn_blocking(move || {
-        let base = name.split('@').next().unwrap_or(&name).to_string();
-        let prefix = format!("{base}@");
+        // Search by the bare name — `brew search mongodb/brew/x` matches only that
+        // one formula, while the bare query lists every @version (tap-qualified,
+        // which is exactly what install needs back).
+        let base = validate::bare_formula(name.split('@').next().unwrap_or(&name)).to_string();
         let out = run_brew(&brew, &["search", &base])?;
-        let mut versions: Vec<String> = out
-            .lines()
-            .map(str::trim)
-            .filter(|l| *l == base || l.starts_with(&prefix))
-            .map(String::from)
-            .collect();
-        // Base first, then variants; stable otherwise.
-        versions.sort_by_key(|v| (v != &base, v.clone()));
-        versions.dedup();
-        Ok(versions)
+        Ok(pick_versions(&out, &base))
     })
     .await
     .map_err(|e| AppError::Shell(format!("brew task failed: {e}")))?
@@ -458,6 +499,29 @@ pub async fn uninstall_formula(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Real `brew search` output, captured 2026-08-17.
+    const REDIS_SEARCH: &str =
+        "hiredis\niredis\nredis\nredis-leveldb\nredis@6.2\nredis@8.2\nredir\nredli\n";
+    const ELASTICSEARCH_SEARCH: &str = "elastic/tap/elasticsearch-full\n\nelasticvue\n";
+
+    #[test]
+    fn versions_are_the_base_and_its_variants_only() {
+        assert_eq!(
+            pick_versions(REDIS_SEARCH, "redis"),
+            ["redis", "redis@6.2", "redis@8.2"]
+        );
+    }
+
+    #[test]
+    fn falls_back_to_the_renamed_tap_build_when_core_has_none() {
+        // `elasticsearch` no longer exists in core; only elastic/tap ships a
+        // build. Without the fallback the ⋯ menu said "No versions found".
+        assert_eq!(
+            pick_versions(ELASTICSEARCH_SEARCH, "elasticsearch"),
+            ["elastic/tap/elasticsearch-full"] // and never `elasticvue`
+        );
+    }
 
     #[test]
     fn parses_brew_services_json() {

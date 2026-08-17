@@ -86,7 +86,13 @@ fn classify(in_downloads: bool, project_age_days: u64) -> Class {
 }
 
 /// Top-level node_modules dirs under $HOME — bounded depth, prunes Library /
-/// Trash / dotdirs, never descends INTO a node_modules. Verified: ~0.2 s.
+/// Trash / dotdirs / the media folders, never descends INTO a node_modules.
+/// Verified: ~0.2 s.
+///
+/// Music, Pictures and Movies are pruned for a second reason: walking them
+/// makes macOS pop a TCC prompt each (Media Library for `~/Music/Music`,
+/// Photos for `Photos Library.photoslibrary`). No node_modules has ever lived
+/// there, so a disk sweep must never make the user grant those.
 fn find_node_modules() -> Vec<PathBuf> {
     let Some(home) = paths::home() else {
         return vec![];
@@ -103,6 +109,15 @@ fn find_node_modules() -> Vec<PathBuf> {
             "-o",
             "-path",
             &format!("{h}/.Trash"),
+            "-o",
+            "-path",
+            &format!("{h}/Music"),
+            "-o",
+            "-path",
+            &format!("{h}/Pictures"),
+            "-o",
+            "-path",
+            &format!("{h}/Movies"),
             "-o",
             "-name",
             ".*",
@@ -328,15 +343,42 @@ fn run_dev_caches() -> Vec<Finding> {
             fix: Some((*fix_id).into()),
         });
     }
-    // Caution / gated items: never one-click. The app's own Terminal tab is
-    // exactly where these commands belong.
-    if let Some(p) = cache_path("Library/pnpm/store").filter(|p| p.is_dir()) {
-        out.push(guide_finding(
-            &format!("pnpm store · {}", super::vscode::fmt_mb(du_bytes(&p))),
-            "pnpm hardlinks every project's packages out of this store — deleting it raw \
-             breaks those projects. Prune only removes packages nothing references.",
-            vec!["In this app's Terminal (or any shell): pnpm store prune".into()],
-        ));
+    // pnpm: the LIVE store is caution-only (hardlinked, prune-by-hand), but a
+    // store version pnpm has moved off is a plain orphan — one-click.
+    if cache_path("Library/pnpm/store").is_some_and(|p| p.is_dir()) {
+        let scan = scan_pnpm_stores();
+        if scan.orphan_bytes >= CACHE_MIN_BYTES {
+            out.push(Finding {
+                probe_id: DEV_CACHES.id,
+                scope: Scope::Disk,
+                severity: Severity::Yellow,
+                tag: Tag::Storage,
+                summary: format!(
+                    "pnpm store {} · {} orphaned",
+                    scan.orphan_names(),
+                    super::vscode::fmt_mb(scan.orphan_bytes)
+                ),
+                explain: format!(
+                    "pnpm changed its store format and left this behind — it now uses {}, and \
+                     `pnpm store prune` only ever touches the current one, so this folder can \
+                     never shrink no matter how often you prune it. Nothing links into it any \
+                     more; a package that's needed again is downloaded once.",
+                    scan.active_name()
+                ),
+                guide: None,
+                fix: Some("pnpm_orphan_stores".into()),
+            });
+        }
+        // The live store stays guide-only — its files are hardlinked into every
+        // project's node_modules, so only pnpm may decide what's unreferenced.
+        if scan.active_bytes >= CACHE_MIN_BYTES {
+            out.push(guide_finding(
+                &format!("pnpm store · {}", super::vscode::fmt_mb(scan.active_bytes)),
+                "pnpm hardlinks every project's packages out of this store — deleting it raw \
+                 breaks those projects. Prune only removes packages nothing references.",
+                vec!["In this app's Terminal (or any shell): pnpm store prune".into()],
+            ));
+        }
     }
     if let Some(p) = cache_path("Library/Containers/com.docker.docker").filter(|p| p.is_dir()) {
         out.push(guide_finding(
@@ -367,6 +409,121 @@ fn run_dev_caches() -> Vec<Finding> {
         });
     }
     out
+}
+
+// --- pnpm store versions ------------------------------------------------------------
+
+struct PnpmStores {
+    /// Store-version dirs pnpm no longer uses, e.g. `~/Library/pnpm/store/v10`.
+    orphans: Vec<PathBuf>,
+    orphan_bytes: u64,
+    active: Option<PathBuf>,
+    active_bytes: u64,
+}
+
+impl PnpmStores {
+    fn orphan_names(&self) -> String {
+        let names: Vec<_> = self
+            .orphans
+            .iter()
+            .filter_map(|p| p.file_name())
+            .map(|n| n.to_string_lossy().into_owned())
+            .collect();
+        names.join(", ")
+    }
+    fn active_name(&self) -> String {
+        self.active
+            .as_ref()
+            .and_then(|p| p.file_name())
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "another folder".into())
+    }
+}
+
+/// A store-version dir pnpm has moved off. `active` is the *name* pnpm itself
+/// reports (`v11`) — names, not paths, because `pnpm store path` can come back
+/// through a different but equivalent prefix (`/private/...`, a symlinked
+/// home) and a path compare would then mark the LIVE store as an orphan.
+/// `None` means we couldn't ask pnpm → nothing is an orphan (fail closed: this
+/// decides a multi-GB delete).
+fn is_orphan_store(name: &str, active: Option<&str>) -> bool {
+    let Some(active) = active else { return false };
+    name != active
+        && name
+            .strip_prefix('v')
+            .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
+}
+
+/// The version dir pnpm is using right now — its own answer is the only
+/// authority; guessing "highest vN" would eventually delete the live store.
+fn pnpm_active_store() -> Option<PathBuf> {
+    let out = Command::new("pnpm").args(["store", "path"]).output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let path = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim());
+    path.is_dir().then_some(path)
+}
+
+fn scan_pnpm_stores() -> PnpmStores {
+    let active = pnpm_active_store();
+    let active_name = active
+        .as_ref()
+        .and_then(|p| p.file_name())
+        .map(|n| n.to_string_lossy().into_owned());
+    let mut orphans = Vec::new();
+    let mut orphan_bytes = 0;
+    if let Some(root) = cache_path("Library/pnpm/store") {
+        if let Ok(rd) = std::fs::read_dir(&root) {
+            for entry in rd.filter_map(Result::ok) {
+                let dir = entry.path();
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if dir.is_dir() && is_orphan_store(&name, active_name.as_deref()) {
+                    orphan_bytes += du_bytes(&dir);
+                    orphans.push(dir);
+                }
+            }
+        }
+    }
+    let active_bytes = active.as_deref().map_or(0, du_bytes);
+    PnpmStores {
+        orphans,
+        orphan_bytes,
+        active,
+        active_bytes,
+    }
+}
+
+/// Re-scans at fix time (never trusts a stale finding) and refuses anything
+/// that isn't a direct child of the store root — the same defense-in-depth the
+/// VSCode orphan cleanup uses.
+fn delete_pnpm_orphan_stores() -> AppResult<String> {
+    let root = cache_path("Library/pnpm/store")
+        .ok_or_else(|| AppError::NotFound("HOME not set".into()))?;
+    let scan = scan_pnpm_stores();
+    if scan.orphans.is_empty() {
+        return Ok("No orphaned pnpm stores.".into());
+    }
+    let (mut removed, mut freed) = (0usize, 0u64);
+    for dir in &scan.orphans {
+        if dir.parent() != Some(root.as_path()) {
+            continue;
+        }
+        let bytes = du_bytes(dir);
+        if std::fs::remove_dir_all(dir).is_ok() {
+            removed += 1;
+            freed += bytes;
+        }
+    }
+    super::claude::journal(&format!(
+        r#"{{"tsEpoch":{},"action":"deletePnpmOrphanStores","removed":{removed},"freedBytes":{freed}}}"#,
+        super::claude::now_epoch()
+    ));
+    Ok(format!(
+        "Removed {removed} orphaned pnpm store{} · freed {}",
+        if removed == 1 { "" } else { "s" },
+        super::vscode::fmt_mb(freed)
+    ))
 }
 
 fn guide_finding(name: &str, explain: &str, steps: Vec<String>) -> Finding {
@@ -400,6 +557,25 @@ pub fn fix_confirmation(fix_id: &str) -> Option<(String, String)> {
              dependencies back."
                 .into(),
         )),
+        // Re-scanned here so the sheet shows what will actually go, not a
+        // number the finding remembered minutes ago.
+        "pnpm_orphan_stores" => {
+            let scan = scan_pnpm_stores();
+            Some((
+                format!(
+                    "Delete {} orphaned pnpm store{}?",
+                    scan.orphans.len(),
+                    if scan.orphans.len() == 1 { "" } else { "s" }
+                ),
+                format!(
+                    "{} · {}. pnpm uses {} now and can never prune these. Nothing links into \
+                     them — packages that are needed again are downloaded once.",
+                    scan.orphan_names(),
+                    super::vscode::fmt_mb(scan.orphan_bytes),
+                    scan.active_name()
+                ),
+            ))
+        }
         _ => SAFE_CACHES
             .iter()
             .find(|(id, _, _)| *id == fix_id)
@@ -420,6 +596,7 @@ pub fn fix(fix_id: &str) -> AppResult<String> {
     match fix_id {
         "deep_dead_node_modules" => delete_node_modules(Class::Dead),
         "deep_stale_node_modules" => delete_node_modules(Class::Stale),
+        "pnpm_orphan_stores" => delete_pnpm_orphan_stores(),
         _ => {
             let (_, label, rel) = SAFE_CACHES
                 .iter()
@@ -496,6 +673,20 @@ pub(crate) fn du_bytes(path: &Path) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // This predicate decides a multi-GB `remove_dir_all`, so every way it
+    // could pick the WRONG directory gets a case.
+    #[test]
+    fn only_superseded_store_versions_are_orphans() {
+        assert!(is_orphan_store("v10", Some("v11")), "pnpm moved off v10");
+        assert!(!is_orphan_store("v11", Some("v11")), "never the live store");
+        // Can't ask pnpm which one is live → nothing is deletable.
+        assert!(!is_orphan_store("v10", None));
+        // Anything that isn't a store version is left alone.
+        for name in ["tmp", "v", "v10x", "backup-v10", ".DS_Store"] {
+            assert!(!is_orphan_store(name, Some("v11")), "{name} is not a store");
+        }
+    }
 
     #[test]
     fn classifies_by_location_and_age() {

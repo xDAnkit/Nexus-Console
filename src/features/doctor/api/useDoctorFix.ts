@@ -16,6 +16,7 @@ const FIX_COMMANDS: Record<string, FixMeta> = {
   vscode_vacuum: { cmd: CMD.VSCODE_VACUUM, label: 'VACUUM now' },
   deep_dead_node_modules: { label: 'Delete dead node_modules' },
   deep_stale_node_modules: { label: 'Delete stale node_modules' },
+  pnpm_orphan_stores: { label: 'Delete old pnpm stores' },
   cache_npm: { label: 'Clear cache' },
   cache_uv: { label: 'Clear cache' },
   cache_huggingface: { label: 'Clear cache' },

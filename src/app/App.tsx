@@ -1,13 +1,9 @@
 import { lazy, Suspense } from 'react';
-import { useSeedManagedServices } from '@/shared/brew';
-// Deep imports (not the feature barrel): the barrel re-exports SessionsPage,
-// which would chain the whole sessions+services graph into the initial chunk
-// and defeat the per-tab lazy split (build warns INEFFECTIVE_DYNAMIC_IMPORT).
-import { useSessionRecorder } from '@/features/sessions/hooks/useSessionRecorder';
-import { useTrayTitle } from '@/features/sessions/hooks/useTrayTitle';
 import { AppShell } from '@/shared/layout/AppShell';
+import { useModuleEnabled } from '@/shared/modules';
 import { useAppSelector } from '@/shared/state/hooks';
 import { Bootstrap } from './Bootstrap';
+import { HomebrewBackground } from './HomebrewBackground';
 import { MainView } from './MainView';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 
@@ -31,13 +27,14 @@ const TerminalDrawerGate = () => {
 };
 
 export const App = () => {
-  useSeedManagedServices();
-  useSessionRecorder();
-  useTrayTitle();
   useKeyboardShortcuts();
+  // Gated by MOUNT, not by a flag inside the hooks: unmounting is what actually
+  // stops the 4s Homebrew poll for someone who doesn't use the module.
+  const homebrewOn = useModuleEnabled('homebrew');
 
   return (
     <Bootstrap>
+      {homebrewOn && <HomebrewBackground />}
       <AppShell footer={<TerminalDrawerGate />}>
         <MainView />
       </AppShell>

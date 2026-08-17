@@ -237,6 +237,9 @@ fn resolve_command(
     ctx: &AppContext,
 ) -> AppResult<(String, Vec<String>)> {
     validate::validate_formula(formula)?;
+    // brew installs a tap formula under its bare name (opt/mongodb-community@7.0),
+    // so every path and client lookup below drops the `user/repo/` prefix.
+    let formula = validate::bare_formula(formula);
     let prefix = ctx.brew_prefix.as_deref().unwrap_or("/opt/homebrew");
     let base = formula.split('@').next().unwrap_or(formula);
     let bin = |name: &str| format!("{prefix}/bin/{name}");

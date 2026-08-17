@@ -12,6 +12,7 @@ use super::{paths, Finding, Platform, Probe, Scope, Severity, Tag};
 use crate::error::{AppError, AppResult};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant};
 
 const MACOS: &[Platform] = &[Platform::MacOs];
 
@@ -218,8 +219,8 @@ fn run_db_bloat() -> Vec<Finding> {
         ),
         explain: "SQLite never shrinks a file when rows shrink, and VSCode copies this file on \
                   every window close — a bloated one makes closing VSCode visibly slow (the \
-                  original case: 1,057 MB → 19 MB). VACUUM rebuilds it compactly; VSCode must \
-                  be closed while it runs."
+                  original case: 1,057 MB → 19 MB). VACUUM rebuilds it compactly; if VSCode is \
+                  open you'll be asked before it's closed."
             .into(),
         guide: None,
         fix: Some("vscode_vacuum".into()),
@@ -267,7 +268,7 @@ pub fn cleanup_orphans() -> AppResult<String> {
 /// Also drops VSCode's own stale `state.vscdb.backup` next to each vacuumed
 /// db — VSCode recreates it on next close.
 pub fn vacuum_bloated() -> AppResult<String> {
-    if vscode_running() {
+    if state_dbs_in_use() {
         return Err(AppError::Forbidden(
             "Close VSCode first — it holds these databases open.".into(),
         ));
@@ -308,6 +309,76 @@ pub fn vacuum_bloated() -> AppResult<String> {
     Ok(format!("Freed {} — {}", fmt_mb(freed), lines.join("; ")))
 }
 
+/// SIGTERM grace (VSCode flushes state + hot-exit backups here), then the
+/// short wait after SIGKILL for the kernel to drop the file handles.
+const TERM_GRACE: Duration = Duration::from_secs(8);
+const KILL_GRACE: Duration = Duration::from_secs(4);
+const QUIT_POLL: Duration = Duration::from_millis(300);
+
+/// Every live process running out of the VSCode bundle — main app + helpers.
+/// Matched on the *executable path* from `ps`, not `pgrep -f`: pgrep can't
+/// read the main `Contents/MacOS/Code` process's argv on macOS, so it misses
+/// the one process that actually matters.
+fn vscode_pids() -> Vec<String> {
+    let Ok(out) = std::process::Command::new("ps")
+        .args(["-axo", "pid=,comm="])
+        .output()
+    else {
+        return Vec::new();
+    };
+    parse_vscode_pids(&String::from_utf8_lossy(&out.stdout))
+}
+
+/// `ps -axo pid=,comm=` lines → pids of VSCode-bundle processes.
+fn parse_vscode_pids(ps_out: &str) -> Vec<String> {
+    ps_out
+        .lines()
+        .filter(|l| l.contains("/Visual Studio Code.app/"))
+        .filter_map(|l| l.split_whitespace().next().map(str::to_owned))
+        .collect()
+}
+
+fn signal_pids(sig: &str, pids: &[String]) {
+    if !pids.is_empty() {
+        let _ = std::process::Command::new("kill")
+            .arg(sig)
+            .args(pids)
+            .status();
+    }
+}
+
+/// True once nothing holds the state DBs open, false if the deadline passes.
+fn wait_released(timeout: Duration) -> bool {
+    let deadline = Instant::now() + timeout;
+    loop {
+        if !state_dbs_in_use() {
+            return true;
+        }
+        if Instant::now() >= deadline {
+            return false;
+        }
+        std::thread::sleep(QUIT_POLL);
+    }
+}
+
+/// Close VSCode for real. SIGTERM first so VSCode gets to flush state and
+/// hot-exit backups; SIGKILL only for whatever ignores that — a modal
+/// "save your changes?" sheet must not be able to veto this, which is the
+/// whole point of the user having confirmed a *force* quit.
+pub fn force_quit_vscode() -> AppResult<()> {
+    signal_pids("-TERM", &vscode_pids());
+    if wait_released(TERM_GRACE) {
+        return Ok(());
+    }
+    signal_pids("-KILL", &vscode_pids());
+    if wait_released(KILL_GRACE) {
+        return Ok(());
+    }
+    Err(AppError::Forbidden(
+        "Something is still holding the VSCode databases open. Close it and try again.".into(),
+    ))
+}
+
 fn vacuum_db(db: &Path) -> Result<(), String> {
     let conn = rusqlite::Connection::open(db).map_err(|e| e.to_string())?;
     conn.busy_timeout(std::time::Duration::from_millis(0))
@@ -315,12 +386,43 @@ fn vacuum_db(db: &Path) -> Result<(), String> {
     conn.execute_batch("VACUUM").map_err(|e| e.to_string())
 }
 
-pub(crate) fn vscode_running() -> bool {
-    std::process::Command::new("pgrep")
-        .args(["-f", "Visual Studio Code.app"])
+/// Is **VSCode** holding a state.vscdb open — the question the VACUUM gate
+/// needs answered. Two earlier versions of this check were wrong:
+///   * `pgrep -f "Visual Studio Code.app"` matched a stray
+///     `chrome_crashpad_handler` left behind by an older VSCode (reparented to
+///     PID 1, days old), so the fix was blocked forever — and it can't read
+///     the main `Contents/MacOS/Code` process's argv on macOS anyway, so it
+///     never saw the process that actually holds the file.
+///   * plain "does *anything* hold these open" counted **our own pid**: a
+///     Doctor scan has ~300 read-only sqlite handles open for its PRAGMA
+///     reads, so a poll landing inside a scan (or a passing `mdworker`) would
+///     report VSCode as still there right after we killed it — the force-quit
+///     would then "fail" with nothing left to kill.
+///
+/// So: holders ∩ VSCode processes. Anything else with the file open is left
+/// to VACUUM's own SQLITE_BUSY backstop, which is what it's for.
+/// ponytail: fails open if lsof is missing — same backstop covers it.
+pub fn state_dbs_in_use() -> bool {
+    let dbs = all_state_dbs();
+    if dbs.is_empty() {
+        return false;
+    }
+    let Ok(out) = std::process::Command::new("lsof")
+        .arg("-t")
+        .arg("--")
+        .args(&dbs)
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    else {
+        return false;
+    };
+    any_holder_is_vscode(&String::from_utf8_lossy(&out.stdout), &vscode_pids())
+}
+
+/// `lsof -t` pids ∩ VSCode pids. Whole-token compare — "634041" is not "63404".
+fn any_holder_is_vscode(lsof_out: &str, vscode_pids: &[String]) -> bool {
+    lsof_out
+        .split_whitespace()
+        .any(|pid| vscode_pids.iter().any(|v| v == pid))
 }
 
 // --- extension audit ----------------------------------------------------------------
@@ -843,6 +945,39 @@ mod tests {
         // Fail-safe: unrecognized top-level shapes are refused, never guessed at.
         assert!(parse_session_cache(r#"{"not":"an array"}"#).is_none());
         assert!(parse_session_cache("garbage").is_none());
+    }
+
+    // The force-quit's target list: real `ps -axo pid=,comm=` lines. The main
+    // process (no "Helper" in its name) must be in there — it's the one that
+    // holds state.vscdb, and the one `pgrep -f` can't see.
+    #[test]
+    fn parses_vscode_pids_from_ps() {
+        let ps = "\
+ 1310 /Applications/Visual Studio Code.app/Contents/Frameworks/Electron Framework.framework/Helpers/chrome_crashpad_handler
+63404 /Applications/Visual Studio Code.app/Contents/MacOS/Code
+63406 /Applications/Visual Studio Code.app/Contents/Frameworks/Code Helper.app/Contents/MacOS/Code Helper
+  456 /Applications/Cursor.app/Contents/MacOS/Cursor
+  789 /usr/libexec/secinitd";
+        assert_eq!(parse_vscode_pids(ps), ["1310", "63404", "63406"]);
+        assert!(parse_vscode_pids("").is_empty());
+    }
+
+    // Only VSCode's own hold blocks a VACUUM. Our own scan keeps ~300
+    // read-only sqlite handles open while it runs — if that counted, the
+    // force-quit would report "still open" with VSCode already dead.
+    #[test]
+    fn only_vscode_holders_block_the_vacuum() {
+        let vs = vec!["63404".to_owned(), "63406".to_owned()];
+        assert!(any_holder_is_vscode("63404\n", &vs));
+        assert!(
+            !any_holder_is_vscode("74067\n900\n", &vs),
+            "our pid / mdworker"
+        );
+        assert!(!any_holder_is_vscode("", &vs), "nothing holds them");
+        assert!(
+            !any_holder_is_vscode("634041\n", &vs),
+            "no substring matches"
+        );
     }
 
     // Real machine, strictly read-only: both probes run without panicking and

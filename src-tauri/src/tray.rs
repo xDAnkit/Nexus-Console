@@ -16,9 +16,22 @@ fn show_main(app: &AppHandle) {
     }
 }
 
+/// Is the Homebrew module on? Read from the frontend's settings file, because
+/// "no services to show" and "this user doesn't manage services here" must look
+/// different in the menu — an empty list alone can't tell them apart.
+fn homebrew_on(app: &AppHandle) -> bool {
+    crate::settings::module_enabled(crate::settings::read(app).as_ref(), "homebrew")
+}
+
 /// Header + one (disabled, read-only) check row per service + Open Dashboard / Quit.
 /// Check items are disabled on purpose: the tick is a status indicator, not a toggle.
-fn build_menu(app: &AppHandle, services: &[TrayService]) -> tauri::Result<Menu<Wry>> {
+/// With `show_services` false the whole section is gone — no header, no "No active
+/// services" line for a feature the user switched off.
+fn build_menu(
+    app: &AppHandle,
+    services: &[TrayService],
+    show_services: bool,
+) -> tauri::Result<Menu<Wry>> {
     let header = MenuItem::with_id(app, "hdr", "Active Services", false, None::<&str>)?;
     let empty = MenuItem::with_id(app, "empty", "No active services", false, None::<&str>)?;
     let sep_top = PredefinedMenuItem::separator(app)?;
@@ -40,13 +53,16 @@ fn build_menu(app: &AppHandle, services: &[TrayService]) -> tauri::Result<Menu<W
         })
         .collect::<tauri::Result<Vec<CheckMenuItem<Wry>>>>()?;
 
-    let mut items: Vec<&dyn IsMenuItem<Wry>> = vec![&header];
-    if rows.is_empty() {
-        items.push(&empty);
-    } else {
-        items.extend(rows.iter().map(|r| r as &dyn IsMenuItem<Wry>));
+    let mut items: Vec<&dyn IsMenuItem<Wry>> = Vec::new();
+    if show_services {
+        items.push(&header);
+        if rows.is_empty() {
+            items.push(&empty);
+        } else {
+            items.extend(rows.iter().map(|r| r as &dyn IsMenuItem<Wry>));
+        }
+        items.push(&sep_top);
     }
-    items.push(&sep_top);
     items.push(&open);
     items.push(&sep_bottom);
     items.push(&quit);
@@ -54,7 +70,7 @@ fn build_menu(app: &AppHandle, services: &[TrayService]) -> tauri::Result<Menu<W
 }
 
 pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let menu = build_menu(app, &[])?;
+    let menu = build_menu(app, &[], homebrew_on(app))?;
     let mut builder = TrayIconBuilder::with_id("main")
         .menu(&menu)
         .show_menu_on_left_click(true)
@@ -77,7 +93,7 @@ pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
 #[tauri::command]
 pub fn set_tray_services(services: Vec<TrayService>, app: AppHandle) {
     if let Some(tray) = app.tray_by_id("main") {
-        if let Ok(menu) = build_menu(&app, &services) {
+        if let Ok(menu) = build_menu(&app, &services, homebrew_on(&app)) {
             let _ = tray.set_menu(Some(menu));
         }
     }

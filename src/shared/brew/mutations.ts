@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ipcVoid, CMD } from '@/shared/tauri';
+import { z } from 'zod';
+import { ipc, ipcVoid, CMD } from '@/shared/tauri';
 import { useAppDispatch } from '@/shared/state/hooks';
-import { removeManaged } from '@/shared/state/serviceIntentSlice';
+import { removeManaged, renameManaged } from '@/shared/state/serviceIntentSlice';
 import { brewKeys } from './keys';
 import type { ServiceDto } from './schemas';
 
@@ -87,8 +88,18 @@ export function useSetLinkIntent() {
   );
 }
 
+/** Install a formula. Rust resolves the name brew actually ships (core dropped
+ * `elasticsearch` in favour of `elastic/tap/elasticsearch-full`) and returns it,
+ * so the card follows whatever really landed instead of staying "Not installed". */
 export function useInstallFormula() {
-  return useServiceMutation<{ name: string }>('Installing', (v) => ipcVoid(CMD.INSTALL_FORMULA, v));
+  const qc = useQueryClient();
+  const dispatch = useAppDispatch();
+  return useMutation({
+    meta: { label: 'Installing' },
+    mutationFn: ({ name }: { name: string }) => ipc(CMD.INSTALL_FORMULA, { name }, z.string()),
+    onSuccess: (installed, { name }) => dispatch(renameManaged({ from: name, to: installed })),
+    onSettled: () => qc.invalidateQueries({ queryKey: brewKeys.services() }),
+  });
 }
 
 /** Uninstall a formula. Refreshes both services and packages. */

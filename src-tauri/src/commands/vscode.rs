@@ -23,18 +23,37 @@ pub async fn vscode_cleanup_orphans(app: tauri::AppHandle) -> AppResult<String> 
     .await
 }
 
-/// VACUUM every bloated state.vscdb. Refuses while VSCode is running.
+/// VACUUM every bloated state.vscdb. VSCode can't be holding them open while
+/// it runs, so when it is the confirm says exactly that and force-quits it on
+/// OK. The kill only ever happens behind the wording that names it — the
+/// plain VACUUM confirm never closes anything.
 #[tauri::command]
 pub async fn vscode_vacuum(app: tauri::AppHandle) -> AppResult<String> {
     blocking(move || {
+        let busy = vscode::state_dbs_in_use();
         confirm_action(
             &app,
-            "VACUUM VSCode databases?",
-            "Rebuilds bloated state.vscdb files compactly, in place — nothing is deleted. \
-             VSCode must be closed while it runs.",
-            "VACUUM",
-            false,
+            if busy {
+                "VSCode is open — close it and VACUUM?"
+            } else {
+                "VACUUM VSCode databases?"
+            },
+            if busy {
+                "VSCode is holding these databases open, so it will be closed now — unsaved \
+                 changes in open editors may be lost. Then the rebuild runs; nothing is deleted."
+            } else {
+                "Rebuilds bloated state.vscdb files compactly, in place — nothing is deleted."
+            },
+            if busy {
+                "Close VSCode & VACUUM"
+            } else {
+                "VACUUM"
+            },
+            busy,
         )?;
+        if busy {
+            vscode::force_quit_vscode()?;
+        }
         vscode::vacuum_bloated()
     })
     .await

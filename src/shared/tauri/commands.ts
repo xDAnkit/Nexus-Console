@@ -1,6 +1,7 @@
 /** Command name constants — the single source of truth for invoke() strings. */
 export const CMD = {
   CONFIRM_BULK: 'confirm_bulk',
+  TRUST_TAP: 'trust_tap',
   GET_APP_CONTEXT: 'get_app_context',
   LIST_SERVICES: 'list_services',
   START_SERVICE: 'start_service',

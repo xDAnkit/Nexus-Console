@@ -1,0 +1,1 @@
+export { ServicesBadge } from './ServicesBadge';

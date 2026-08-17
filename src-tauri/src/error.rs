@@ -22,6 +22,11 @@ pub enum AppError {
     /// frontend suppresses its toast for this kind.
     #[error("{0}")]
     Cancelled(String),
+    /// A formula/cask lives in a third-party tap Homebrew hasn't been told to
+    /// trust, so it refuses to load it (Homebrew 6+). The tap name rides in
+    /// `detail` so the UI can offer a one-click `brew trust`.
+    #[error("Homebrew won't load anything from the untrusted tap “{0}”.")]
+    UntrustedTap(String),
     /// Homebrew is mid-operation (our own mutation, or brew upgrading its
     /// bundled Ruby) and can't answer right now. Transient and self-clearing —
     /// the frontend renders it as a calm "working…" state, never a red error.
@@ -40,6 +45,7 @@ impl AppError {
             AppError::Io(_) => "io",
             AppError::Cancelled(_) => "cancelled",
             AppError::Busy(_) => "busy",
+            AppError::UntrustedTap(_) => "untrustedTap",
         }
     }
 }
@@ -49,7 +55,12 @@ impl serde::Serialize for AppError {
         let mut st = s.serialize_struct("AppError", 3)?;
         st.serialize_field("kind", self.kind())?;
         st.serialize_field("message", &self.to_string())?;
-        st.serialize_field("detail", &self.to_string())?;
+        // `detail` normally repeats the message; for an untrusted tap it carries
+        // the bare tap name, which the UI needs to offer "Trust <tap>".
+        match self {
+            AppError::UntrustedTap(tap) => st.serialize_field("detail", tap)?,
+            _ => st.serialize_field("detail", &self.to_string())?,
+        }
         st.end()
     }
 }

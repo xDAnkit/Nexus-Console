@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { MODULE_IDS, type ModuleId } from '@/shared/modules/modules.config';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type Layout = 'grid' | 'list';
@@ -11,6 +12,10 @@ interface SettingsState {
   quitBehavior: QuitBehavior;
   /** User drag-reorder of service cards, by formula. Unknown/new formulas sort last. */
   cardOrder: string[];
+  /** Which feature modules the user runs. `null` = never chosen → the first-run
+   * picker decides. Validated on read (see sanitizeModules) since it comes off
+   * a user-editable file. */
+  enabledModules: ModuleId[] | null;
   /** Tray automation (read by the Rust scheduler from the same store file). */
   autoArchiveEnabled: boolean;
   autoArchiveCutoffDays: number;
@@ -27,6 +32,7 @@ export type PersistedSettings = Pick<
   | 'pollIntervalMs'
   | 'quitBehavior'
   | 'cardOrder'
+  | 'enabledModules'
   | 'autoArchiveEnabled'
   | 'autoArchiveCutoffDays'
   | 'autoVacuumEnabled'
@@ -38,6 +44,7 @@ const initialState: SettingsState = {
   pollIntervalMs: 4000,
   quitBehavior: 'stopUnlinked',
   cardOrder: [],
+  enabledModules: null,
   autoArchiveEnabled: false,
   autoArchiveCutoffDays: 30,
   autoVacuumEnabled: false,
@@ -63,6 +70,14 @@ const settingsSlice = createSlice({
     setCardOrder(state, action: PayloadAction<string[]>) {
       state.cardOrder = action.payload;
     },
+    /** At least one feature module must stay on — an app with no feature tabs is
+     * a brick, so the empty state is unrepresentable in the store rather than
+     * merely unreachable through the UI. Also normalizes to registry order. */
+    setEnabledModules(state, action: PayloadAction<ModuleId[]>) {
+      const next = MODULE_IDS.filter((id) => action.payload.includes(id));
+      if (next.length === 0) return;
+      state.enabledModules = next;
+    },
     setAutoArchiveEnabled(state, action: PayloadAction<boolean>) {
       state.autoArchiveEnabled = action.payload;
     },
@@ -85,6 +100,7 @@ export const {
   setPollInterval,
   setQuitBehavior,
   setCardOrder,
+  setEnabledModules,
   setAutoArchiveEnabled,
   setAutoArchiveCutoffDays,
   setAutoVacuumEnabled,

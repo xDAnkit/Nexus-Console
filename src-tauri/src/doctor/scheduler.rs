@@ -10,7 +10,6 @@
 
 use super::{claude, vscode};
 use std::time::{Duration, Instant};
-use tauri::Manager;
 
 const TICK: Duration = Duration::from_secs(5 * 60);
 const DAILY: Duration = Duration::from_secs(24 * 60 * 60);
@@ -24,7 +23,10 @@ pub struct Automation {
 }
 
 /// The `"settings"` object inside the frontend's plugin-store file.
-/// Fail-safe: anything missing/unrecognized → feature stays OFF.
+/// Fail-safe: anything missing/unrecognized → feature stays OFF. Each task also
+/// needs its owning module switched on — and note that check fails the OTHER way
+/// (missing → on), because automation is opt-in while modules are opt-out; see
+/// `crate::settings::module_enabled`.
 fn parse_settings(v: Option<&serde_json::Value>) -> Automation {
     let get_bool = |k: &str| {
         v.and_then(|s| s.get(k))
@@ -32,25 +34,19 @@ fn parse_settings(v: Option<&serde_json::Value>) -> Automation {
             == Some(true)
     };
     Automation {
-        archive: get_bool("autoArchiveEnabled"),
+        archive: get_bool("autoArchiveEnabled") && crate::settings::module_enabled(v, "claude"),
         cutoff_days: v
             .and_then(|s| s.get("autoArchiveCutoffDays"))
             .and_then(serde_json::Value::as_u64)
             .map_or(DEFAULT_CUTOFF_DAYS, |d| d.clamp(1, 3650) as u32),
-        vacuum: get_bool("autoVacuumEnabled"),
+        vacuum: get_bool("autoVacuumEnabled") && crate::settings::module_enabled(v, "doctor"),
     }
 }
 
 /// Fresh read from disk every tick — no cache to go stale when the frontend
 /// saves a toggle.
 fn read_settings(app: &tauri::AppHandle) -> Automation {
-    let raw = app
-        .path()
-        .app_data_dir()
-        .ok()
-        .and_then(|d| std::fs::read_to_string(d.join("settings.json")).ok())
-        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok());
-    parse_settings(raw.as_ref().and_then(|r| r.get("settings")))
+    parse_settings(crate::settings::read(app).as_ref())
 }
 
 pub fn start(app: tauri::AppHandle) {
@@ -69,7 +65,7 @@ pub fn start(app: tauri::AppHandle) {
             // Bloat check is a few PRAGMA reads — cheap enough to poll; the
             // fix itself only fires when VSCode is closed AND something is
             // actually bloated.
-            if auto.vacuum && !vscode::vscode_running() {
+            if auto.vacuum && !vscode::state_dbs_in_use() {
                 if let Ok(msg) = vscode::vacuum_bloated() {
                     if msg.starts_with("Freed") {
                         notify(&app, &msg);
@@ -152,5 +148,19 @@ mod tests {
         let a = parse_settings(Some(&v));
         assert!(a.archive && a.vacuum);
         assert_eq!(a.cutoff_days, 3650);
+    }
+
+    #[test]
+    fn automation_needs_its_module_switched_on() {
+        let both_on = serde_json::json!({
+            "autoArchiveEnabled": true,
+            "autoVacuumEnabled": true,
+            "enabledModules": ["claude"],
+        });
+        let a = parse_settings(Some(&both_on));
+        // Claude Chats is on → archiving may run; Doctor is off → VACUUM may not,
+        // even though its own toggle is still true from before.
+        assert!(a.archive);
+        assert!(!a.vacuum);
     }
 }

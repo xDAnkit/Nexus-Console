@@ -9,6 +9,7 @@ export type IpcErrorKind =
   | 'io'
   | 'cancelled'
   | 'busy'
+  | 'untrustedTap'
   | 'contract'
   | 'unknown';
 

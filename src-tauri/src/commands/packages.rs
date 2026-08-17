@@ -34,6 +34,19 @@ fn brew_bin<'a>(ctx: &'a State<'_, AppContext>) -> AppResult<&'a str> {
         .ok_or_else(|| AppError::NotFound("Homebrew not found".into()))
 }
 
+/// `brew list` exits non-zero on an untrusted tap — even when the untrusted
+/// item is an unrelated cask — and its stdout is dropped with it, so the whole
+/// Packages tab silently came back empty. Let that one error through (the UI
+/// offers to trust the tap); every other failure stays an empty list, since a
+/// Mac with no casks installed is normal, not an error.
+fn tolerate(res: AppResult<String>) -> AppResult<String> {
+    match res {
+        Err(e @ AppError::UntrustedTap(_)) => Err(e),
+        Err(_) => Ok(String::new()),
+        ok => ok,
+    }
+}
+
 /// `name version[ version2 …]` → (name, joined versions).
 fn parse_installed_line(line: &str) -> Option<(String, String)> {
     let mut it = line.split_whitespace();
@@ -87,11 +100,8 @@ pub async fn list_packages(ctx: State<'_, AppContext>) -> AppResult<Vec<PackageD
         let brew2 = brew.clone();
         let casks_handle =
             std::thread::spawn(move || run_brew(&brew2, &["list", "--cask", "--versions"]));
-        let formulae = run_brew(&brew, &["list", "--formula", "--versions"]).unwrap_or_default();
-        let casks = casks_handle
-            .join()
-            .unwrap_or(Ok(String::new()))
-            .unwrap_or_default();
+        let formulae = tolerate(run_brew(&brew, &["list", "--formula", "--versions"]))?;
+        let casks = tolerate(casks_handle.join().unwrap_or(Ok(String::new())))?;
 
         let mut out = Vec::new();
         for (text, kind) in [(&formulae, "formula"), (&casks, "cask")] {

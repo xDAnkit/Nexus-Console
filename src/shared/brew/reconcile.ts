@@ -1,3 +1,4 @@
+import { bareFormula } from '@/shared/lib/format';
 import type { ManagedService, LinkState } from '@/shared/state/serviceIntentSlice';
 import type { ServiceDto } from './schemas';
 import type { DisplayStatus, ReconciledService } from './types';
@@ -24,9 +25,14 @@ export function reconcile(
   brewList: ServiceDto[],
   intent: Record<string, LinkState>,
 ): ReconciledService[] {
-  const byName = new Map(brewList.map((d) => [d.name, d]));
+  // Keyed on the bare name: a service added from search is tap-qualified
+  // (`user/repo/name@1`) while brew reports it bare (`name@1`) — matching on the
+  // raw string showed an installed service as "Not installed".
+  // ponytail: two taps shipping the same formula name would collide; key on the
+  // full name if that ever happens for real.
+  const byName = new Map(brewList.map((d) => [bareFormula(d.name), d]));
   return managed.map((m) => {
-    const dto = byName.get(m.formula);
+    const dto = byName.get(bareFormula(m.formula));
     return {
       formula: m.formula,
       displayName: m.displayName,

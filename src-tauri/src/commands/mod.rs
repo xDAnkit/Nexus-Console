@@ -55,6 +55,51 @@ pub(crate) fn confirm_action(
     }
 }
 
+/// Grant Homebrew permission to load formulae/casks from a third-party tap —
+/// the fix offered whenever a command fails with `untrustedTap`. Native sheet
+/// first (trusting a tap lets its Ruby run on this Mac), then
+/// `brew trust --tap <tap>`, which writes a user-level config file — no sudo,
+/// no admin prompt. One trust unblocks every later brew command for that tap.
+#[tauri::command]
+pub async fn trust_tap(
+    tap: String,
+    ctx: tauri::State<'_, crate::context::AppContext>,
+    app: tauri::AppHandle,
+) -> AppResult<()> {
+    use crate::brew::{run_brew, BrewLock};
+    use crate::commands::services::ServicesCache;
+    use tauri::Manager;
+
+    crate::util::validate::validate_tap(&tap)?;
+    let bin = ctx
+        .brew_bin
+        .clone()
+        .ok_or_else(|| AppError::NotFound("Homebrew not found".into()))?;
+    blocking(move || {
+        confirm_action(
+            &app,
+            "Trust this Homebrew tap?",
+            &format!(
+                "Homebrew won't load anything from “{tap}” until you trust it once, \
+                 so installs, versions and package lists fail while it's untrusted.\n\n\
+                 Nexus will run:  brew trust --tap {tap}\n\n\
+                 Only trust taps you added yourself. No administrator password is needed.",
+            ),
+            "Trust tap",
+            false,
+        )?;
+        let lock = app.state::<BrewLock>();
+        let _g = lock
+            .0
+            .lock()
+            .map_err(|_| AppError::Io("brew lock poisoned".into()))?;
+        run_brew(&bin, &["trust", "--tap", &tap])?;
+        app.state::<ServicesCache>().invalidate();
+        Ok(())
+    })
+    .await
+}
+
 /// FE-invokable native confirm for bulk service actions (Stop / Stop all).
 /// Returns `true` if confirmed, `false` if cancelled — the frontend gates the
 /// bulk mutation on it. Off the async runtime via `blocking` (sheet parks it).

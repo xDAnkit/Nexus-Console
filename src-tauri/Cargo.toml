@@ -2,7 +2,8 @@
 name = "nexus-console"
 version = "0.1.0"
 description = "Nexus Console — a lightweight GUI for local Homebrew services"
-authors = ["AvinyX"]
+authors = ["xDAnkit <xDAnkitjain@gmail.com>"]
+license = "MIT"
 edition = "2021"
 
 [lib]

@@ -51,10 +51,16 @@ export function formatTime(ms: number): string {
   });
 }
 
-/** Derive a display name from a formula (no hardcoded lookup): strip @version,
- * split on - / _, title-case. redis → Redis · postgresql@18 → Postgresql. */
+/** A formula without its tap prefix — brew's own output (services list, opt/
+ * paths) is always bare. `user/repo/name@1` → `name@1`; core names unchanged. */
+export function bareFormula(formula: string): string {
+  return formula.slice(formula.lastIndexOf('/') + 1);
+}
+
+/** Derive a display name from a formula (no hardcoded lookup): strip the tap and
+ * @version, split on - / _, title-case. redis → Redis · postgresql@18 → Postgresql. */
 export function formulaDisplayName(formula: string): string {
-  return formula
+  return bareFormula(formula)
     .split('@')[0]
     .split(/[-_]/)
     .filter(Boolean)

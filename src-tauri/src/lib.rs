@@ -8,6 +8,7 @@ mod error;
 mod pty;
 mod quit;
 mod session;
+mod settings;
 mod tray;
 mod util;
 
@@ -73,6 +74,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::confirm_bulk,
+            commands::trust_tap,
             commands::context::get_app_context,
             commands::doctor::doctor_scan,
             commands::doctor::doctor_deep_scan,

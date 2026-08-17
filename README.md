@@ -1,110 +1,181 @@
 # Nexus Console
 
-A lightweight macOS desktop app for managing your local [Homebrew](https://brew.sh) setup — services, packages, ports, and a built-in terminal, all in one window instead of the command line.
+Your Mac's local dev setup, in one window.
 
-Built with Tauri (Rust) + React.
+![Free](https://img.shields.io/badge/100%25-Free-brightgreen?style=for-the-badge)
+![No ads](https://img.shields.io/badge/Ads-None-blue?style=for-the-badge)
+![No tracking](https://img.shields.io/badge/Tracking-None-blueviolet?style=for-the-badge)
+![Offline](https://img.shields.io/badge/Your%20data-Stays%20on%20your%20Mac-orange?style=for-the-badge)
+![MIT license](https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge)
 
-## What it can do
+|                               |                                                                                                                 |
+| :---------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| ✅&nbsp;&nbsp;**Free to use** | Every feature. No paid tier, no trial, no locked buttons.                                                       |
+| ✅&nbsp;&nbsp;**No ads**      | Nothing is sold to you inside the app. Ever.                                                                    |
+| ✅&nbsp;&nbsp;**No tracking** | No analytics, no telemetry, no account, no server. Your data is never shared, because it never leaves your Mac. |
 
-- **Services** — see all your Homebrew services, and start / stop / restart them with a click. Install or uninstall formulae, search for new ones, and check available versions.
-- **Packages** — list everything you've installed, spot what's outdated, upgrade one package or all at once, and run `brew update`. View package info and what depends on it before you remove anything.
-- **Ports** — see which processes are listening on which ports, and kill a stuck one by PID (with an optional force / sudo).
-- **Terminal** — a real embedded terminal, so you can drop to the shell without leaving the app.
-- Lives in the menu-bar tray and sends desktop notifications.
+> The app has no network code of its own. It only talks to your own machine.
 
-## Set up on a fresh Mac
+Nexus Console is a small macOS app that manages your [Homebrew](https://brew.sh) services and
+packages, shows you which ports are busy, checks the health of your machine, and gives you a
+terminal. No more remembering ten `brew` commands. Click a button instead.
 
-Run the setup check first — it tells you exactly what's missing and how to fix it:
+Built with Tauri (Rust) + React. Runs on macOS 11 or newer.
+
+## Why you'll like it
+
+- **Free, ad-free, and private.** See above. That is the whole deal, no asterisk.
+- **Light on resources.** Native Rust core, one small window, lives in the menu bar.
+- **Pick what you need.** Turn modules on or off in Settings. The app hides what you don't use.
+
+## What's inside
+
+The app is split into modules. Each one is optional.
+
+### Homebrew
+
+- **Services** shows every Homebrew service with its real state, so a service that says "started"
+  but is not actually healthy is marked as starting, not green. Start, stop and restart with one
+  click. Install, uninstall, search for new formulae and switch versions.
+- **Packages** lists everything you have installed and marks what is outdated. Upgrade one package
+  or all of them, run `brew update`, read package info, and see what depends on a package before
+  you remove it.
+- **Sessions** keeps a simple history of what you ran and how long your services stayed up.
+
+Runs a light check every few seconds so the menu bar count stays correct.
+
+### Ports
+
+See which process is listening on which port, and kill the stuck one by PID. Force kill and admin
+escalation are there when a process will not go quietly. Nothing runs in the background.
+
+### Doctor
+
+Read-only health checks for your Mac. It looks at disk and system state, VSCode, browsers, Claude
+Code and Ollama, then reports what is slow, what is eating storage, and what is just information.
+Two rules it never breaks:
+
+- Probes only read. They never start a daemon just to look at it.
+- Every finding is honest about what it does. Cleaning disk space is labelled storage, not speed.
+
+Fixes only happen when you press the button. There is also an optional daily VSCode cleanup that
+runs while the app sits in the tray.
+
+### Claude Chats
+
+Browse your Claude Code chat history per project, and archive old chats so they stop piling up.
+You choose how long to keep things. Archiving can run daily on its own if you want. This module
+only appears if Claude Code is installed.
+
+### Terminal
+
+A real terminal built into the app, so you can drop to the shell without switching windows.
+
+Plus: it sits in the menu bar, keeps your services running when you close the window, and sends
+desktop notifications.
+
+## Install and run
+
+On a fresh Mac, three commands. The setup script checks for Xcode Command Line Tools, Homebrew,
+Node 22.12 or newer, and Rust, then installs whatever is missing. It asks before each step.
 
 ```bash
-npm run setup        # or: sh scripts/setup.sh  (works before npm install too)
+git clone <this-repo> && cd NexusConsole
+sh scripts/setup.sh     # add --yes to skip the prompts
+npm start               # runs the app
 ```
 
-If you'd rather do it by hand, this is everything the check verifies, in order:
+### Using pnpm
 
-1. **Xcode Command Line Tools** (compilers for the Rust build):
-
-   ```bash
-   xcode-select --install
-   ```
-
-2. **Homebrew** (the app manages it, and it's the easiest way to get Node):
-
-   ```bash
-   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-   ```
-
-   On Apple Silicon the installer finishes with two "Next steps" commands that add brew to your PATH — **run them**, or `brew` won't be found in new terminals:
-
-   ```bash
-   echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-   eval "$(/opt/homebrew/bin/brew shellenv)"
-   ```
-
-3. **Node ≥ 22.12**:
-
-   ```bash
-   brew install node
-   ```
-
-4. **Rust via rustup** — ⚠️ not `brew install rust`; Tauri needs rustup-managed toolchains, and the default install includes the `rustfmt`/`clippy` components the git hooks use:
-
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
-
-   Then open a **new terminal** (or `source "$HOME/.cargo/env"`) so `cargo` is on PATH.
-
-5. **Project dependencies** (this also installs the git hooks via lefthook):
-
-   ```bash
-   npm install
-   ```
-
-Re-run `npm run setup` until everything is ✓, then:
+pnpm works too, and it is faster. Install it first if you don't have it:
 
 ```bash
-npm run tauri dev     # develop
-npm run tauri build   # build the .app / .dmg
+npm install -g pnpm     # or: corepack enable pnpm
 ```
 
-The built app lands in `src-tauri/target/release/bundle/`. The very first Rust build compiles all dependencies and takes several minutes — later builds are fast.
+Then:
+
+```bash
+pnpm install
+pnpm start              # runs the app
+pnpm release            # build the .app / .dmg
+```
+
+Pick one package manager and stick with it. Both `package-lock.json` and `pnpm-lock.yaml` are in
+the repo, and switching back and forth just creates noise in your diffs. CI uses npm.
+
+### Notes
+
+- The first Rust build compiles every dependency and takes a few minutes. After that it is fast.
+- `npm run dev` (or `pnpm dev`) starts Vite in the browser only. Most features will fail there
+  because they need Rust. Use `npm start`.
+- Skipping the setup script? You need **Xcode Command Line Tools**, **Homebrew**,
+  **Node 22.12+**, and **Rust via [rustup](https://rustup.rs)**. Not `brew install rust`. Tauri
+  needs rustup toolchains and the `rustfmt` and `clippy` parts the git hooks use. Then
+  `npm install`.
+
+## Everyday commands
+
+```bash
+npm start               # develop (Tauri + Vite)
+npm run release         # production build
+npm test                # vitest
+npm run typecheck       # tsc --noEmit
+npm run lint            # oxlint
+npm run format          # prettier
+cargo test   --manifest-path src-tauri/Cargo.toml
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+```
+
+Git hooks (lefthook) run lint and format on commit, then typecheck, tests and clippy on push. CI
+runs the same set.
+
+## Privacy
+
+Short version: the app has no network code for itself. It does not phone home.
+
+- No accounts, no sign-in, no cloud.
+- No analytics, no crash reporting, no usage stats.
+- Your settings, sessions and archives are plain files on your own Mac.
+- The only network access happens when Homebrew itself downloads a package you asked for.
 
 ## Troubleshooting
 
-**"Nexus Console can't be opened" / "damaged" when opening the built app on another Mac.**
-The app isn't signed with a paid Apple Developer certificate, so macOS Gatekeeper quarantines a copied/downloaded build. Either right-click the app → **Open** → **Open** (once is enough), or clear the quarantine flag:
-
-```bash
-xattr -dr com.apple.quarantine "/Applications/Nexus Console.app"
-```
-
-Building from source on your own machine never hits this.
+**Anything toolchain-related.** Run `npm run setup` again. It re-checks everything and fixes what
+is missing. Open a **new terminal** afterwards so PATH changes apply.
 
 **`cargo: command not found` when committing (especially from VSCode's Source Control).**
-The git hooks run `cargo fmt` / `clippy`. GUI git clients don't load your shell profile, so `~/.cargo/bin` isn't on their PATH — [.lefthookrc](.lefthookrc) fixes that (make sure you've pulled it and run `npm install`). In a terminal, `source "$HOME/.cargo/env"` or open a new one. If Rust genuinely isn't installed, see step 4 above.
+GUI git clients don't load your shell profile, so `~/.cargo/bin` isn't on their PATH.
+[.lefthookrc](.lefthookrc) handles that, so make sure you have run `npm install`. In a terminal:
+`source "$HOME/.cargo/env"`.
 
-**`brew: command not found` right after installing Homebrew.**
-The PATH step was skipped — run the two `shellenv` lines from step 2, then open a new terminal.
-
-**Homebrew permission errors** (`Permission denied @ ...` under `/opt/homebrew`).
-Usually a machine where brew was installed by another user account:
+**Homebrew permission errors** (`Permission denied @ … /opt/homebrew`). Usually a Mac where brew
+was installed by another user account:
 
 ```bash
 sudo chown -R "$(whoami)" /opt/homebrew
 ```
 
-**Vite fails to start / cryptic `npm run dev` errors.**
-Check `node --version` — this project needs ≥ 22.12 (`brew upgrade node`).
+**"Refusing to load formula … from untrusted tap".**
+Homebrew 6 won't touch a third-party tap until you trust it. The app shows a **Trust tap** button
+on that error. From a terminal it is `brew trust --tap <user/repo>`.
 
-**Hook failure blocking an urgent commit.**
-Fix the toolchain properly with `npm run setup`, but in an emergency: `LEFTHOOK=0 git commit ...` skips hooks — CI still runs the same checks, so it only defers the failure.
+**App shows "Homebrew not detected".** It looks in `/opt/homebrew`, then `/usr/local`, then
+`$HOMEBREW_PREFIX`. Install brew and relaunch. There is nothing to configure.
 
-**App shows "Homebrew not detected".**
-The app probes `/opt/homebrew` and `/usr/local`, then the `HOMEBREW_PREFIX` env var. Install brew (step 2) and relaunch — no config needed.
+**"Nexus Console can't be opened" or "damaged" when opening a build on another Mac.**
+The app is not signed with a paid Apple Developer certificate, so Gatekeeper quarantines a copied
+build. Right-click the app, choose **Open**, then **Open** again. Or:
 
-## Requirements (summary)
+```bash
+xattr -dr com.apple.quarantine "/Applications/Nexus Console.app"
+```
 
-- macOS 11 or newer
-- [Homebrew](https://brew.sh)
-- Node.js ≥ 22.12 + [Rust via rustup](https://rustup.rs) (for building from source)
+Building on your own machine never hits this.
+
+**Hook failure blocking an urgent commit.** `LEFTHOOK=0 git commit …` skips the hooks. CI still
+runs the same checks, so it only delays the failure.
+
+## License
+
+[MIT](LICENSE). Use it, change it, ship it. Just keep the copyright notice.
