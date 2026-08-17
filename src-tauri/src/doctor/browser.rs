@@ -422,7 +422,7 @@ impl Browser {
                 }
             }
         }
-        out.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        out.sort_by_key(|e| e.name.to_lowercase());
         out
     }
 }

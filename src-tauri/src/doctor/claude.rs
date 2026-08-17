@@ -13,6 +13,7 @@
 use super::paths;
 use crate::error::{AppError, AppResult};
 use serde::Serialize;
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
@@ -107,7 +108,7 @@ pub fn list_projects() -> AppResult<Vec<ClaudeProject>> {
             cache_bytes,
         });
     }
-    out.sort_by(|a, b| b.newest_epoch.cmp(&a.newest_epoch));
+    out.sort_by_key(|p| Reverse(p.newest_epoch));
     Ok(out)
 }
 
@@ -243,7 +244,7 @@ pub fn sessions(dir_name: &str) -> AppResult<Vec<ArchivedChat>> {
             }
         })
         .collect();
-    out.sort_by(|a, b| b.epoch.cmp(&a.epoch));
+    out.sort_by_key(|c| Reverse(c.epoch));
     Ok(out)
 }
 
@@ -382,7 +383,7 @@ pub fn archived() -> AppResult<Vec<ArchivedProject>> {
         if chats.is_empty() {
             continue;
         }
-        chats.sort_by(|a, b| b.epoch.cmp(&a.epoch));
+        chats.sort_by_key(|c| Reverse(c.epoch));
         out.push(ArchivedProject {
             dir_name: by_folder.get(&folder).cloned(),
             folder,
@@ -471,7 +472,7 @@ fn regenerate_index(dir: &Path, folder: &str, project_dir_name: &str) -> AppResu
             (epoch, title, name)
         })
         .collect();
-    rows.sort_by(|a, b| b.0.cmp(&a.0));
+    rows.sort_by_key(|r| Reverse(r.0));
     fs::write(&index_path, render_index(folder, project_dir_name, &rows)).map_err(io)
 }
 
