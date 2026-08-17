@@ -8,11 +8,11 @@ Your Mac's local dev setup, in one window.
 ![Offline](https://img.shields.io/badge/Your%20data-Stays%20on%20your%20Mac-orange?style=for-the-badge)
 ![MIT license](https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge)
 
-|                               |                                                                                                                 |
-| :---------------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| ✅&nbsp;&nbsp;**Free to use** | Every feature. No paid tier, no trial, no locked buttons.                                                       |
-| ✅&nbsp;&nbsp;**No ads**      | Nothing is sold to you inside the app. Ever.                                                                    |
-| ✅&nbsp;&nbsp;**No tracking** | No analytics, no telemetry, no account, no server. Your data is never shared, because it never leaves your Mac. |
+|                                                                 |                                                                                                                 |
+| :-------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| ✅&nbsp;&nbsp;**Free&nbsp;to&nbsp;use**&nbsp;&nbsp;&nbsp;&nbsp; | Every feature. No paid tier, no trial, no locked buttons.                                                       |
+| ✅&nbsp;&nbsp;**No&nbsp;ads**&nbsp;&nbsp;&nbsp;&nbsp;           | Nothing is sold to you inside the app. Ever.                                                                    |
+| ✅&nbsp;&nbsp;**No&nbsp;tracking**&nbsp;&nbsp;&nbsp;&nbsp;      | No analytics, no telemetry, no account, no server. Your data is never shared, because it never leaves your Mac. |
 
 > The app has no network code of its own. It only talks to your own machine.
 
