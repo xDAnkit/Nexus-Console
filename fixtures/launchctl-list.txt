@@ -1,0 +1,3 @@
+PID	Status	Label
+44734	0	homebrew.mxcl.postgresql@18
+99615	0	homebrew.mxcl.redis

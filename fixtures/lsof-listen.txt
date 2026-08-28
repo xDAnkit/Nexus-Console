@@ -1,0 +1,5 @@
+COMMAND     PID      USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+postgres  44734 ankitjain    7u  IPv6 0xd7857d6769c121c3      0t0  TCP [::1]:5432 (LISTEN)
+postgres  44734 ankitjain    8u  IPv4 0xdd526a78ebcc50c1      0t0  TCP 127.0.0.1:5432 (LISTEN)
+redis-ser 99615 ankitjain    6u  IPv4 0x6c3498d5564e0ffd      0t0  TCP 127.0.0.1:6379 (LISTEN)
+redis-ser 99615 ankitjain    7u  IPv6 0xbddca846bf024440      0t0  TCP [::1]:6379 (LISTEN)

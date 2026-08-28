@@ -1,0 +1,183 @@
+ada-url 3.4.4
+aom 3.14.1
+assimp 5.4.3
+autoconf 2.73
+automake 1.18.1
+bison 3.8.2
+boost 1.90.0_1
+brotli 1.2.0
+c-ares 1.34.6
+ca-certificates 2026-05-14
+cairo 1.18.4
+cfitsio 4.6.4
+cgif 0.5.3
+chruby 0.3.9
+cocoapods 1.16.2
+coreutils 9.11
+dbus 1.14.10
+deno 1.39.3
+double-conversion 3.4.0
+edencommon 2026.05.11.00
+elasticsearch-full 7.17.4
+fb303 2026.05.11.00
+fbthrift 2026.05.11.00
+fftw 3.3.11
+fizz 2026.05.11.00
+fmt 12.1.0
+folly 2026.05.11.00
+fontconfig 2.18.1
+freetype 2.14.3
+fribidi 1.0.16
+gcc 14.2.0_1 15.2.0_1
+gdbm 1.24
+gdk-pixbuf 2.44.6 2.42.12
+gettext 1.0
+gflags 2.3.0
+giflib 6.1.3
+glib 2.88.1
+glog 0.7.1
+gmp 6.3.0
+gnupg 2.5.20
+gnutls 3.8.13_2
+gpgme 2.1.0
+gpgmepp 2.1.0
+graphite2 1.3.15
+harfbuzz 14.2.1
+hdf5 2.1.1
+hdrhistogram_c 0.11.9
+highway 1.4.0
+hunspell 1.7.2
+hwloc 2.11.2
+icu4c@76 76.1_1
+icu4c@78 78.3
+imagemagick 7.1.2-24 7.1.1-43
+imath 3.2.2
+ios-deploy 1.12.2
+isl 0.27
+jasper 4.2.4
+jenkins-lts 2.479.3
+jpeg-turbo 3.1.4.1
+jpeg-xl 0.11.2
+kibana-full 7.17.4
+krb5 1.22.2
+libaec 1.1.7
+libarchive 3.8.7
+libassuan 3.0.2
+libb2 0.98.1
+libdatrie 0.2.14
+libde265 1.0.15 1.1.0
+libdeflate 1.25
+libdicom 1.1.0 1.2.1
+libevent 2.1.12_1
+libexif 0.6.26
+libffi 3.4.4
+libgcrypt 1.12.2
+libgpg-error 1.61
+libgsf 1.14.51
+libheif 1.19.5_1 1.22.2
+libidn2 2.3.8
+libimagequant 4.4.1
+libksba 1.8.0
+libmatio 1.5.30_1
+libmng 2.0.3_1
+libmpc 1.4.1
+libnghttp2 1.68.1
+libnghttp3 1.15.0
+libngtcp2 1.21.0
+libomp 19.1.4 22.1.6 19.1.7
+libpng 1.6.58
+libraw 0.22.1
+librsvg 2.58.4 2.62.2
+libsodium 1.0.22
+libtasn1 4.21.0
+libthai 0.1.30
+libtiff 4.7.1_1
+libtool 2.5.4
+libultrahdr 1.4.0
+libunistring 1.4.2
+libusb 1.0.30
+libuv 1.52.1
+libvmaf 3.1.0
+libx11 1.8.13
+libxau 1.0.12
+libxcb 1.17.0
+libxdmcp 1.1.5
+libxext 1.3.7
+libxml2 2.15.3
+libxrender 0.9.12
+libyaml 0.2.5
+little-cms2 2.19
+llhttp 9.3.1
+lz4 1.10.0
+lzo 2.10
+m4 1.4.21
+macos-term-size 1.0.0
+md4c 0.5.2
+mlx 0.32.0 0.31.1
+mlx-c 0.6.0_3 0.6.0
+mongodb-community@7.0 7.0.31
+mongodb-database-tools 100.14.1
+mongosh 2.8.2
+mozjpeg 4.1.5
+mpdecimal 4.0.1
+mpfr 4.2.2
+nettle 4.0
+node 25.8.2
+node@14 14.21.3_1
+node@18 18.20.6
+npth 1.8
+nspr 4.39
+nss 3.107 3.124
+nvm 0.39.5
+ollama 0.31.1
+open-mpi 5.0.6
+openexr 3.4.12 3.3.2
+openjdk 23.0.2
+openjdk@11 11.0.26
+openjdk@17 17.0.14
+openjdk@21 21.0.11
+openjpeg 2.5.4
+openjph 0.27.3
+openslide 4.0.0 4.0.0_1
+openssl@1.1 1.1.1w
+openssl@3 3.6.3 3.6.2
+p11-kit 0.26.2
+pango 1.57.1
+pcre2 10.47_1
+pinentry 1.3.2
+pixman 0.46.4
+pkgconf 2.5.1
+pmix 5.0.4
+pnpm 11.5.2
+poppler 26.04.0
+postgresql@18 18.4
+python-packaging 24.2
+python@3.10 3.10.15
+python@3.11 3.11.10
+python@3.13 3.13.0_1 3.13.1
+python@3.14 3.14.6 3.14.5
+python@3.9 3.9.20
+qt 6.7.3
+readline 8.3.3
+redis 8.8.0
+ruby 3.4.1
+ruby-build 20260520
+ruby-install 0.9.2
+shared-mime-info 2.4
+simdjson 4.4.2
+snappy 1.2.2
+sqlite 3.53.1 3.53.3
+unbound 1.22.0
+uthash 2.3.0
+uvwasi 0.0.23
+vips 8.18.2_1
+wangle 2026.05.11.00
+watchman 2026.05.11.00
+webp 1.6.0
+x265 4.2
+xorgproto 2025.1
+xxhash 0.8.3
+xz 5.8.3
+yarn 1.22.19
+zlib 1.3.2
+zstd 1.5.7_1

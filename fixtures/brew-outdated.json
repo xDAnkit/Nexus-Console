@@ -1,0 +1,587 @@
+{
+  "formulae": [
+    {
+      "name": "assimp",
+      "installed_versions": ["5.4.3"],
+      "current_version": "6.0.5",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "automake",
+      "installed_versions": ["1.18.1"],
+      "current_version": "1.18.1_1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "c-ares",
+      "installed_versions": ["1.34.6"],
+      "current_version": "1.34.8",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "cocoapods",
+      "installed_versions": ["1.16.2"],
+      "current_version": "1.17.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "dbus",
+      "installed_versions": ["1.14.10"],
+      "current_version": "1.16.2_1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "deno",
+      "installed_versions": ["1.39.3"],
+      "current_version": "2.9.2",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "edencommon",
+      "installed_versions": ["2026.05.11.00"],
+      "current_version": "2026.07.13.00",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "fb303",
+      "installed_versions": ["2026.05.11.00"],
+      "current_version": "2026.07.13.00",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "fbthrift",
+      "installed_versions": ["2026.05.11.00"],
+      "current_version": "2026.07.13.00",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "fizz",
+      "installed_versions": ["2026.05.11.00"],
+      "current_version": "2026.07.13.00",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "fmt",
+      "installed_versions": ["12.1.0"],
+      "current_version": "12.2.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "folly",
+      "installed_versions": ["2026.05.11.00"],
+      "current_version": "2026.07.13.00",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "fontconfig",
+      "installed_versions": ["2.18.1"],
+      "current_version": "2.18.2",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "gcc",
+      "installed_versions": ["14.2.0_1", "15.2.0_1"],
+      "current_version": "16.1.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "gdbm",
+      "installed_versions": ["1.24"],
+      "current_version": "1.26",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "gdk-pixbuf",
+      "installed_versions": ["2.42.12", "2.44.6"],
+      "current_version": "2.44.7",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "glib",
+      "installed_versions": ["2.88.1"],
+      "current_version": "2.88.2",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "gnupg",
+      "installed_versions": ["2.5.20"],
+      "current_version": "2.5.21",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "gpgme",
+      "installed_versions": ["2.1.0"],
+      "current_version": "2.1.2",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "hdrhistogram_c",
+      "installed_versions": ["0.11.9"],
+      "current_version": "0.11.10",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "hunspell",
+      "installed_versions": ["1.7.2"],
+      "current_version": "1.7.3",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "hwloc",
+      "installed_versions": ["2.11.2"],
+      "current_version": "2.13.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "icu4c@76",
+      "installed_versions": ["76.1_1"],
+      "current_version": "76.1_2",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "imagemagick",
+      "installed_versions": ["7.1.1-43", "7.1.2-24"],
+      "current_version": "7.1.2-27",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "isl",
+      "installed_versions": ["0.27"],
+      "current_version": "0.28",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "jasper",
+      "installed_versions": ["4.2.4"],
+      "current_version": "4.2.9",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "jenkins-lts",
+      "installed_versions": ["2.479.3"],
+      "current_version": "2.568.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "jpeg-turbo",
+      "installed_versions": ["3.1.4.1"],
+      "current_version": "3.2.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "jpeg-xl",
+      "installed_versions": ["0.11.2"],
+      "current_version": "0.12.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libarchive",
+      "installed_versions": ["3.8.7"],
+      "current_version": "3.8.8",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libde265",
+      "installed_versions": ["1.0.15", "1.1.0"],
+      "current_version": "1.1.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libdicom",
+      "installed_versions": ["1.1.0", "1.2.1"],
+      "current_version": "1.3.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libevent",
+      "installed_versions": ["2.1.12_1"],
+      "current_version": "2.1.13",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libffi",
+      "installed_versions": ["3.4.4"],
+      "current_version": "3.7.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libgsf",
+      "installed_versions": ["1.14.51"],
+      "current_version": "1.14.58",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libheif",
+      "installed_versions": ["1.19.5_1", "1.22.2"],
+      "current_version": "1.23.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libnghttp2",
+      "installed_versions": ["1.68.1"],
+      "current_version": "1.69.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libnghttp3",
+      "installed_versions": ["1.15.0"],
+      "current_version": "1.17.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libngtcp2",
+      "installed_versions": ["1.21.0"],
+      "current_version": "1.24.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libomp",
+      "installed_versions": ["19.1.4", "19.1.7", "22.1.6"],
+      "current_version": "22.1.8",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "librsvg",
+      "installed_versions": ["2.58.4", "2.62.2"],
+      "current_version": "2.62.3",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libtiff",
+      "installed_versions": ["4.7.1_1"],
+      "current_version": "4.7.2",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "libvmaf",
+      "installed_versions": ["3.1.0"],
+      "current_version": "3.2.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "llhttp",
+      "installed_versions": ["9.3.1"],
+      "current_version": "9.4.2",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "md4c",
+      "installed_versions": ["0.5.2"],
+      "current_version": "0.5.3",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "mongosh",
+      "installed_versions": ["2.8.2"],
+      "current_version": "2.9.2",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "node",
+      "installed_versions": ["25.8.2"],
+      "current_version": "26.5.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "node@18",
+      "installed_versions": ["18.20.6"],
+      "current_version": "18.20.8",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "nss",
+      "installed_versions": ["3.107", "3.124"],
+      "current_version": "3.125",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "nvm",
+      "installed_versions": ["0.39.5"],
+      "current_version": "0.40.5",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "ollama",
+      "installed_versions": ["0.31.1"],
+      "current_version": "0.32.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "open-mpi",
+      "installed_versions": ["5.0.6"],
+      "current_version": "5.0.9",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "openexr",
+      "installed_versions": ["3.3.2", "3.4.12"],
+      "current_version": "3.4.13_1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "openjdk",
+      "installed_versions": ["23.0.2"],
+      "current_version": "26.0.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "openjdk@11",
+      "installed_versions": ["11.0.26"],
+      "current_version": "11.0.31",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "openjdk@17",
+      "installed_versions": ["17.0.14"],
+      "current_version": "17.0.19",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "openjph",
+      "installed_versions": ["0.27.3"],
+      "current_version": "0.30.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "openslide",
+      "installed_versions": ["4.0.0", "4.0.0_1"],
+      "current_version": "4.0.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "p11-kit",
+      "installed_versions": ["0.26.2"],
+      "current_version": "0.26.4",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "pango",
+      "installed_versions": ["1.57.1"],
+      "current_version": "1.58.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "pinentry",
+      "installed_versions": ["1.3.2"],
+      "current_version": "1.3.3",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "pkgconf",
+      "installed_versions": ["2.5.1"],
+      "current_version": "3.0.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "pmix",
+      "installed_versions": ["5.0.4"],
+      "current_version": "6.1.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "pnpm",
+      "installed_versions": ["11.5.2"],
+      "current_version": "11.13.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "poppler",
+      "installed_versions": ["26.04.0"],
+      "current_version": "26.07.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "python-packaging",
+      "installed_versions": ["24.2"],
+      "current_version": "26.2",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "python@3.10",
+      "installed_versions": ["3.10.15"],
+      "current_version": "3.10.20_3",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "python@3.11",
+      "installed_versions": ["3.11.10"],
+      "current_version": "3.11.15_3",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "python@3.13",
+      "installed_versions": ["3.13.0_1", "3.13.1"],
+      "current_version": "3.13.14_1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "python@3.9",
+      "installed_versions": ["3.9.20"],
+      "current_version": "3.9.25",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "qt",
+      "installed_versions": ["6.7.3"],
+      "current_version": "6.11.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "ruby",
+      "installed_versions": ["3.4.1"],
+      "current_version": "4.0.5",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "ruby-build",
+      "installed_versions": ["20260520"],
+      "current_version": "20260701",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "ruby-install",
+      "installed_versions": ["0.9.2"],
+      "current_version": "0.10.2",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "shared-mime-info",
+      "installed_versions": ["2.4"],
+      "current_version": "2.5.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "simdjson",
+      "installed_versions": ["4.4.2"],
+      "current_version": "4.6.4",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "unbound",
+      "installed_versions": ["1.22.0"],
+      "current_version": "1.25.1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "uthash",
+      "installed_versions": ["2.3.0"],
+      "current_version": "2.4.0",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "vips",
+      "installed_versions": ["8.18.2_1"],
+      "current_version": "8.18.4_1",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "wangle",
+      "installed_versions": ["2026.05.11.00"],
+      "current_version": "2026.07.13.00",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "watchman",
+      "installed_versions": ["2026.05.11.00"],
+      "current_version": "2026.07.13.00",
+      "pinned": false,
+      "pinned_version": null
+    },
+    {
+      "name": "yarn",
+      "installed_versions": ["1.22.19"],
+      "current_version": "1.22.22",
+      "pinned": false,
+      "pinned_version": null
+    }
+  ],
+  "casks": [
+    {
+      "name": "zulu@11",
+      "installed_versions": ["11.0.20.1,11.66.19-ca"],
+      "current_version": "11.0.31,11.88.17",
+      "pinned": false,
+      "pinned_version": null
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+[
+  {
+    "name": "jenkins-lts",
+    "status": "none",
+    "user": null,
+    "file": "/opt/homebrew/opt/jenkins-lts/homebrew.mxcl.jenkins-lts.plist",
+    "exit_code": null
+  },
+  {
+    "name": "ollama",
+    "status": "none",
+    "user": null,
+    "file": "/opt/homebrew/opt/ollama/homebrew.mxcl.ollama.plist",
+    "exit_code": null
+  },
+  {
+    "name": "postgresql@18",
+    "status": "started",
+    "user": null,
+    "file": "/opt/homebrew/opt/postgresql@18/homebrew.mxcl.postgresql@18.plist",
+    "exit_code": null
+  },
+  {
+    "name": "redis",
+    "status": "started",
+    "user": null,
+    "file": "/opt/homebrew/opt/redis/homebrew.mxcl.redis.plist",
+    "exit_code": null
+  },
+  {
+    "name": "unbound",
+    "status": "none",
+    "user": null,
+    "file": "/opt/homebrew/opt/unbound/homebrew.mxcl.unbound.plist",
+    "exit_code": null
+  }
+]
