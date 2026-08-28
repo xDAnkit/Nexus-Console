@@ -788,7 +788,9 @@ mod tests {
 
     // Strictly read-only smoke against this machine's real ~/.claude + archive:
     // listing, decode, INDEX/title parsing, and a dry-run archive preview.
+    // Ignored in CI (runner has no ~/.claude).
     #[test]
+    #[ignore]
     fn real_machine_read_only_smoke() {
         let projects = list_projects().unwrap();
         if projects.is_empty() {

@@ -982,7 +982,9 @@ mod tests {
 
     // Real machine, strictly read-only: both probes run without panicking and
     // the sqlite read path works against real state.vscdb files.
+    // Ignored in CI (runner has no VSCode installed).
     #[test]
+    #[ignore]
     fn probes_run_on_real_machine() {
         assert!(run_orphans().len() <= 1);
         assert!(run_db_bloat().len() <= 1);
